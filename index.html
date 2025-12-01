@@ -142,20 +142,20 @@
                 </div>
                 
                 <div>
-                    <label for="signup-email" class="block text-sm font-medium text-gray-700">Email (Lead)</label>
-                    <input type="email" id="signup-email" required placeholder="seu@email.com" class="mt-1 w-full p-3 border-2 border-gray-300 rounded-xl focus:ring-primary focus:border-primary transition">
+                    <label for="signup-email" class="block text-sm font-medium text-gray-700">Email</label>
+                    <input type="email" id="signup-email" required placeholder="usuario@apex.com" class="mt-1 w-full p-3 border-2 border-gray-300 rounded-xl focus:ring-primary focus:border-primary transition">
                 </div>
                 
                 <!-- CAMPO DE SENHA (NOVO: REQUISITO 1) -->
                 <div>
-                    <label for="signup-password" class="block text-sm font-medium text-gray-700">Senha (Acesso)</label>
-                    <input type="password" id="signup-password" required placeholder="Min: 8 chars, 1 Maiúscula, 1 Especial" class="mt-1 w-full p-3 border-2 border-gray-300 rounded-xl focus:ring-primary focus:border-primary transition">
-                    <p class="text-xs text-gray-500 mt-1">Ex: SenhaForte@123</p>
+                    <label for="signup-password" class="block text-sm font-medium text-gray-700">Senha Segura</label>
+                    <input type="password" id="signup-password" required placeholder="**********" class="mt-1 w-full p-3 border-2 border-gray-300 rounded-xl focus:ring-primary focus:border-primary transition">
+                    <p class="text-xs text-gray-500 mt-1"></p>
                 </div>
 
                 <!-- CAMPO TELEFONE (NOVO: REQUISITO 1) -->
                  <div>
-                    <label for="signup-phone" class="block text-sm font-medium text-gray-700">Telefone (Somente Números)</label>
+                    <label for="signup-phone" class="block text-sm font-medium text-gray-700">Telefone</label>
                     <!-- oninput garante que apenas números sejam digitados -->
                     <input type="tel" id="signup-phone" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required placeholder="11999999999" class="mt-1 w-full p-3 border-2 border-gray-300 rounded-xl focus:ring-primary focus:border-primary transition">
                 </div>
@@ -163,10 +163,12 @@
                 <div>
                     <label for="signup-category" class="block text-sm font-medium text-gray-700">Categoria Desejada</label>
                     <select id="signup-category" class="mt-1 w-full p-3 border-2 border-gray-300 rounded-xl focus:ring-primary focus:border-primary transition">
-                        <option value="B">B (Carro)</option>
-                        <option value="A">A (Moto)</option>
-                        <option value="AB">AB (Ambas)</option>
-                        <option value="C/D/E">C/D/E (Profissional)</option>
+                        <option value="B">A</option>
+                        <option value="A">B</option>
+                        <option value="AB">AB</option>
+                        <option value="C">C</option>
+                        <option value="D">D</option>
+                        <option value="E">E</option>
                     </select>
                 </div>
                 
@@ -194,7 +196,7 @@
                     <i class="fas fa-steering-wheel mr-2 text-accent"></i> APEX <span class="font-light ml-1">DRIVE</span>
                 </div>
                 <div class="text-sm text-white/80" id="user-id-display">
-                    Carregando autenticação...
+                    APEX & CO
                 </div>
                 <!-- Navegação: Meu Perfil / Área Premium -->
                 <nav class="hidden md:flex space-x-4">
@@ -449,7 +451,7 @@
 
                         <!-- Botão de Ação -->
                         <button class="w-full btn-accent text-white font-bold py-3 rounded-xl shadow-xl flex items-center justify-center transition">
-                            <i class="fas fa-plus mr-2"></i> Reservar Nova Aula Premium
+                            <i class="fas fa-plus mr-2"></i> Reservar Nova Aula 
                         </button>
 
                     </div>
