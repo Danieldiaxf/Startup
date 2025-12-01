@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Apex Drive</title>
 
-    <!-- FAVICON PERSONALIZADO (Volante Dourado com Centro Verde) -->
+    <!-- FAVICON PERSONALIZADO -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23F59E0B' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><circle cx='12' cy='12' r='10'/><path d='M12 2v10'/><path d='M12 12l-7 4'/><path d='M12 12l7 4'/><circle cx='12' cy='12' r='3' fill='%23197149' stroke='none'/></svg>" type="image/svg+xml">
 
     <!-- Tailwind CSS CDN -->
@@ -20,49 +20,45 @@
     <!-- CSS INCORPORADO -->
     <style>
         :root {
-            /* Paleta de Luxo: Deep Green (Autarquia/Crescimento) e Rich Gold (Luxo/Premium) */
-            --color-primary: #197149; /* Deep Green */
-            --color-accent: #F59E0B;  /* Rich Gold (Amber 500) */
-            --color-bg: #ffffff; /* Fundo branco puro para alto contraste e limpeza */
+            /* Paleta de Luxo: Deep Green e Rich Gold */
+            --color-primary: #197149;
+            --color-accent: #F59E0B;
+            --color-bg: #ffffff;
         }
 
         .bg-primary { background-color: var(--color-primary); }
         .text-primary { color: var(--color-primary); }
         .bg-accent { background-color: var(--color-accent); }
         .text-accent { color: var(--color-accent); }
+        
         .btn-primary { 
             background-color: var(--color-primary); 
             transition: background-color 0.2s, transform 0.1s; 
         }
-        .btn-primary:hover { background-color: #0F5E3D; /* Darker Green */ }
+        .btn-primary:hover { background-color: #0F5E3D; }
         .btn-primary:active { transform: scale(0.98); }
 
-        /* CTA de Destaque (Accent) agora tem um efeito de brilho sutil */
         .btn-accent { 
             background-color: var(--color-accent); 
             transition: background-color 0.2s, transform 0.1s, box-shadow 0.2s;
-            /* Ajuste do shadow para o novo Gold */
             box-shadow: 0 4px 6px -1px rgba(245, 158, 11, 0.4), 0 2px 4px -2px rgba(245, 158, 11, 0.4);
         }
         .btn-accent:hover { 
-            background-color: #D97706; /* Richer Gold hover */ 
-            /* Ajuste do shadow para o novo Gold */
+            background-color: #D97706; 
             box-shadow: 0 10px 15px -3px rgba(245, 158, 11, 0.6), 0 4px 6px -4px rgba(245, 158, 11, 0.6);
         }
-        .hover-accent:hover { background-color: #D97706; }
-
 
         body {
             font-family: 'Inter', sans-serif;
             background-color: var(--color-bg);
         }
-        /* Estilo para simular borda de perfil moderna e luxuosa */
+        
         .profile-border {
             border: 4px solid var(--color-accent);
             padding: 2px;
-            border-radius: 9999px; /* Full rounded */
+            border-radius: 9999px;
         }
-        /* Estilo para simular o Passaporte CNH no perfil */
+        
         .passport-card {
             background-color: var(--color-primary);
             color: white;
@@ -71,7 +67,7 @@
             box-shadow: 0 10px 15px rgba(25, 113, 73, 0.5);
             border-left: 8px solid var(--color-accent);
         }
-        /* Estilo para o FAB do Chatbot */
+        
         .chatbot-fab {
             position: fixed;
             bottom: 20px;
@@ -127,7 +123,7 @@
 
     <!-- MODAL DE CADASTRO (SIGN UP) -->
     <div id="sign-up-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50 hidden transition-opacity">
-        <div class="bg-white rounded-3xl w-full max-w-md p-8 sm:p-10 shadow-2xl border-t-8 border-accent" onclick="event.stopPropagation()">
+        <div class="bg-white rounded-3xl w-full max-w-md p-6 sm:p-8 shadow-2xl border-t-8 border-accent max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
             <button id="btn-close-signup-icon" class="float-right text-gray-400 hover:text-gray-600 transition">
                 <i class="fas fa-times text-xl"></i>
             </button>
@@ -138,7 +134,6 @@
                 <p class="text-sm text-gray-500">Solicitação de acesso exclusivo.</p>
             </div>
 
-            <!-- Nota: O evento submit é tratado pelo JS no final do arquivo -->
             <form id="signup-form" class="space-y-4">
                 <div>
                     <label for="signup-name" class="block text-sm font-medium text-gray-700">Nome Completo</label>
@@ -150,18 +145,36 @@
                     <input type="email" id="signup-email" required placeholder="usuario@apex.com" class="mt-1 w-full p-3 border-2 border-gray-300 rounded-xl focus:ring-primary focus:border-primary transition">
                 </div>
                 
-                <!-- CAMPO DE SENHA (NOVO: REQUISITO 1) -->
                 <div>
                     <label for="signup-password" class="block text-sm font-medium text-gray-700">Senha Segura</label>
                     <input type="password" id="signup-password" required placeholder="**********" class="mt-1 w-full p-3 border-2 border-gray-300 rounded-xl focus:ring-primary focus:border-primary transition">
-                    <p class="text-xs text-gray-500 mt-1"></p>
                 </div>
 
-                <!-- CAMPO TELEFONE (NOVO: REQUISITO 1) -->
-                 <div>
+                <div>
                     <label for="signup-phone" class="block text-sm font-medium text-gray-700">Telefone</label>
-                    <!-- oninput garante que apenas números sejam digitados -->
                     <input type="tel" id="signup-phone" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required placeholder="11999999999" class="mt-1 w-full p-3 border-2 border-gray-300 rounded-xl focus:ring-primary focus:border-primary transition">
+                </div>
+
+                <!-- NOVOS CAMPOS: ENDEREÇO -->
+                <div class="grid grid-cols-3 gap-3">
+                    <div class="col-span-2">
+                        <label for="signup-city" class="block text-sm font-medium text-gray-700">Cidade</label>
+                        <input type="text" id="signup-city" required placeholder="Ex: São Paulo" class="mt-1 w-full p-3 border-2 border-gray-300 rounded-xl focus:ring-primary focus:border-primary transition">
+                    </div>
+                    <div>
+                        <label for="signup-state" class="block text-sm font-medium text-gray-700">UF</label>
+                        <select id="signup-state" class="mt-1 w-full p-3 border-2 border-gray-300 rounded-xl focus:ring-primary focus:border-primary transition">
+                            <option value="SP">SP</option>
+                            <option value="RJ">RJ</option>
+                            <option value="MG">MG</option>
+                            <option value="RS">RS</option>
+                            <option value="PR">PR</option>
+                            <option value="SC">SC</option>
+                            <option value="DF">DF</option>
+                            <option value="BA">BA</option>
+                            <option value="Outro">Outro</option>
+                        </select>
+                    </div>
                 </div>
                 
                 <div>
@@ -180,7 +193,7 @@
                     <i class="fas fa-clipboard-check mr-2"></i> Confirmar Cadastro
                 </button>
             </form>
-             <!-- Mensagem de feedback persistente -->
+            
             <div id="signup-feedback-message" class="mt-4 hidden p-4 rounded-xl text-center border-2 border-green-500 bg-green-50 text-green-700">
                 <p class="font-bold text-lg">Sucesso! Cadastro Enviado.</p>
                 <p class="text-sm mt-1">Seus dados foram encaminhados para a administração.</p>
@@ -193,7 +206,7 @@
     <!-- CONTEÚDO PRINCIPAL DA APLICAÇÃO -->
     <div id="app-container" class="hidden">
 
-        <!-- Header (Luxuoso e Profissional) -->
+        <!-- Header -->
         <header class="bg-primary shadow-xl sticky top-0 z-10">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
                 <div class="text-2xl font-extrabold text-white flex items-center">
@@ -202,7 +215,6 @@
                 <div class="text-sm text-white/80" id="user-id-display">
                     APEX & CO
                 </div>
-                <!-- Navegação: Meu Perfil / Área Premium -->
                 <nav class="hidden md:flex space-x-4">
                     <button id="btn-open-profile" class="btn-accent text-white py-1 px-4 rounded-full font-bold transition flex items-center">
                         <i class="fas fa-user-circle mr-2"></i> Meu Perfil
@@ -213,7 +225,6 @@
         </header>
 
         <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <!-- Título e Introdução para Pitch - Nota: Border-t-8 Gold/Accent -->
             <section class="text-center mb-10 p-6 bg-white rounded-3xl shadow-xl border-t-8 border-accent">
                 <h1 class="text-4xl font-extrabold text-gray-900 mb-3 sm:text-5xl">
                     APEX DRIVE 
@@ -223,21 +234,17 @@
                 </p>
             </section>
             
-            <!-- Seção de Filtros (Design Thinking: Facilidade de Uso e Acessibilidade) -->
+            <!-- Filtros -->
             <div class="bg-white p-6 rounded-2xl shadow-lg mb-8 border-t-4 border-primary/20">
                 <h2 class="text-2xl font-bold text-gray-800 mb-4 flex items-center">
                     <i class="fas fa-filter text-primary mr-2"></i> Seleção de Mentores
                 </h2>
                 
-                <!-- Primeira Linha de Filtros: Busca, Gênero, Carro -->
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-                    <!-- Busca por Termo/Localização (md:col-span-2) -->
                     <div class="md:col-span-2">
                         <label for="search-term" class="block text-sm font-medium text-gray-700 mb-1">Buscar por Nome ou Cidade </label>
                         <input type="text" id="search-term" placeholder="Ex: São Paulo ou Gol" class="w-full p-3 border-2 border-gray-200 rounded-xl focus:ring-accent focus:border-accent transition">
                     </div>
-                    
-                    <!-- Filtro de Gênero -->
                     <div>
                         <label for="gender-filter" class="block text-sm font-medium text-gray-700 mb-1">Gênero</label>
                         <select id="gender-filter" class="w-full p-3 border-2 border-gray-200 rounded-xl focus:ring-accent focus:border-accent transition">
@@ -247,8 +254,6 @@
                             <option value="Outro">Outro</option>
                         </select>
                     </div>
-
-                    <!-- Filtro de Carro (Mocked) -->
                     <div>
                         <label for="car-filter" class="block text-sm font-medium text-gray-700 mb-1">Carro de Prática</label>
                         <select id="car-filter" class="w-full p-3 border-2 border-gray-200 rounded-xl focus:ring-accent focus:border-accent transition">
@@ -261,10 +266,7 @@
                     </div>
                 </div>
 
-                <!-- Segunda Linha de Filtros: Categoria CNH e Ordenação -->
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    
-                    <!-- Filtro de Categoria CNH (NOVO) -->
                     <div>
                         <label for="category-filter" class="block text-sm font-medium text-gray-700 mb-1">Categoria CNH</label>
                         <select id="category-filter" class="w-full p-3 border-2 border-gray-200 rounded-xl focus:ring-accent focus:border-accent transition">
@@ -276,8 +278,6 @@
                             <option value="D">D</option>
                         </select>
                     </div>
-
-                    <!-- Ordenação -->
                     <div>
                         <label for="sort-by" class="block text-sm font-medium text-gray-700 mb-1">Ordenar por</label>
                         <select id="sort-by" class="w-full p-3 border-2 border-gray-200 rounded-xl focus:ring-accent focus:border-accent transition">
@@ -285,15 +285,13 @@
                             <option value="proximity">Mais Próximos (km)</option>
                         </select>
                     </div>
-
-                    <!-- Espaçamento -->
                     <div class="hidden md:block md:col-span-2"></div>
                 </div>
             </div>
 
             <!-- Lista de Mentores -->
             <div id="mentor-list-container" class="space-y-6">
-                <!-- Mentor Cards will be injected here by JavaScript -->
+                <!-- Injetado via JS -->
                 <div class="text-center py-10 text-gray-500">
                     <i class="fas fa-spinner fa-spin text-4xl text-primary"></i>
                     <p class="mt-2">Carregando mentores...</p>
@@ -304,12 +302,10 @@
         <!-- MODAL DE PERFIL DO MENTOR -->
         <div id="mentor-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50 hidden transition-opacity" onclick="closeMentorModal()">
             <div class="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl" onclick="event.stopPropagation()">
-                <!-- Botão de Fechar -->
                 <button onclick="closeMentorModal()" class="float-right text-gray-400 hover:text-gray-600 transition">
                     <i class="fas fa-times text-xl"></i>
                 </button>
                 
-                <!-- Detalhes do Mentor -->
                 <div class="text-center mb-6">
                     <div class="profile-border mx-auto inline-block mb-3">
                         <img id="modal-mentor-photo" src="" alt="Foto do Mentor" class="h-24 w-24 object-cover rounded-full bg-gray-200">
@@ -320,7 +316,7 @@
                         <span id="modal-mentor-rating-stars" class="text-accent">★★★★★</span>
                         <span id="modal-mentor-reviews" class="text-gray-500 ml-2">(120 avaliações)</span>
                     </div>
-                    <p id="modal-mentor-bio" class="text-gray-700 italic mb-3">Bio do mentor, foco em baliza e ansiedade.</p>
+                    <p id="modal-mentor-bio" class="text-gray-700 italic mb-3">Bio do mentor.</p>
                     
                     <div class="flex justify-around text-sm border-t border-b py-3 mt-4">
                         <div class="text-center">
@@ -336,22 +332,9 @@
                     </div>
                 </div>
                 
-                <!-- Progresso do Aluno (Simulação) -->
-                <div class="mt-4 pt-4 border-t border-primary/20">
-                    <h4 class="text-lg font-bold text-primary mb-3 flex items-center">
-                        <i class="fas fa-chart-line mr-2 text-accent"></i> Foco da Mentoria
-                    </h4>
-                    <div class="space-y-2 text-sm text-gray-700">
-                        <p>Teoria: Foco em legislação avançada.</p>
-                        <p>Prática: Domínio de baliza e controle de ansiedade.</p>
-                        <p class="text-xs text-gray-500 italic">O mentor foca nos pontos fracos identificados no histórico de provas.</p>
-                    </div>
-                </div>
-
-                <!-- Botões de Ação (CTAs - Melhoria 3: Agendamento e Transação) -->
                 <div class="mt-6 border-t pt-4 space-y-3">
                     <h4 class="text-lg font-bold text-gray-800">Serviços Premium</h4>
-                    <label for="booking-date" class="block text-sm font-medium text-gray-700 mb-1">Selecione uma Data Disponível para Agendamento:</label>
+                    <label for="booking-date" class="block text-sm font-medium text-gray-700 mb-1">Selecione uma Data Disponível:</label>
                     <input type="date" id="booking-date" class="w-full p-3 border-2 border-gray-200 rounded-xl focus:ring-accent focus:border-accent transition" value="2025-12-15">
                     
                     <button onclick="startBookingProcess('pratica')" class="w-full btn-accent text-white font-bold py-3 rounded-xl shadow-lg">
@@ -360,47 +343,33 @@
                     <button onclick="startBookingProcess('teorica')" class="w-full btn-primary text-white font-bold py-3 rounded-xl shadow-md">
                         <i class="fas fa-video mr-2"></i> Consultoria Teórica (R$ 80/h)
                     </button>
-                    <p class="text-xs text-center text-gray-500 mt-2">10% de taxa de serviço aplicada pela plataforma (Monetização).</p>
-                </div>
-
-                <!-- Formulário de Avaliação -->
-                <div class="mt-6 pt-4 border-t">
-                    <h4 class="text-lg font-semibold mb-2">Deixar uma Avaliação</h4>
-                    <div class="flex gap-2">
-                        <input type="number" id="rating-input" min="1" max="5" placeholder="Nota (1-5)" class="p-2 border rounded-xl w-24">
-                        <button onclick="submitRating()" class="bg-gray-200 text-gray-700 font-medium py-2 px-4 rounded-xl hover:bg-gray-300 transition">
-                            Avaliar
-                        </button>
-                    </div>
                 </div>
             </div>
         </div>
 
-        <!-- MODAL DE PERFIL DO ALUNO (TELA CHEIA SIMULADA) -->
+        <!-- MODAL DE PERFIL DO ALUNO (TELA CHEIA) -->
         <div id="user-profile-modal" class="fixed inset-0 bg-gray-50 overflow-y-auto z-40 hidden transition-opacity">
             <div class="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
-                <!-- Botão de Fechar no topo -->
                 <button onclick="closeUserProfileModal()" class="fixed top-4 right-4 text-primary bg-white/90 p-3 rounded-full shadow-lg z-50 hover:text-accent transition">
                     <i class="fas fa-times text-2xl"></i>
                 </button>
-                <!-- Botão de Voltar para Home -->
                 <button onclick="closeUserProfileModal();" class="fixed top-4 left-4 text-primary bg-white/90 p-3 rounded-full shadow-lg z-50 hover:text-accent transition flex items-center">
                     <i class="fas fa-arrow-left mr-2"></i> Home
                 </button>
 
-
                 <!-- Header de Perfil -->
                 <div class="flex flex-col sm:flex-row items-center sm:items-start bg-white p-6 rounded-2xl shadow-xl border-t-8 border-accent mb-8 mt-16 sm:mt-8">
                     <div class="profile-border mr-6 flex-shrink-0">
-                        <img id="profile-photo" src="https://placehold.co/150x150/197149/ffffff?text=MS" alt="Foto de Perfil" class="h-32 w-32 object-cover rounded-full">
+                        <img id="profile-photo" src="https://placehold.co/150x150/197149/ffffff?text=ME" alt="Foto de Perfil" class="h-32 w-32 object-cover rounded-full">
                     </div>
                     <div class="mt-4 sm:mt-0 text-center sm:text-left flex-grow">
-                        <h2 id="profile-name" class="text-4xl font-extrabold text-gray-900">Mariana Silva</h2>
-                        <p id="profile-email" class="text-lg text-gray-500">mariana.silva@client.com</p>
+                        <h2 id="profile-name" class="text-4xl font-extrabold text-gray-900">Usuário Apex</h2>
+                        <p id="profile-email" class="text-lg text-gray-500">usuario@email.com</p>
+                        <!-- LOCAL ONDE A CIDADE APARECE -->
                         <p id="profile-location" class="text-md text-primary font-semibold mt-1">
-                            <i class="fas fa-map-marker-alt mr-1"></i> São Paulo, SP
+                            <i class="fas fa-map-marker-alt mr-1"></i> Brasil
                         </p>
-                        <p class="text-sm text-gray-600 mt-3">Membro APEX VIP desde 2024. Buscando Categoria AB.</p>
+                        <p class="text-sm text-gray-600 mt-3">Membro APEX VIP. Buscando Categoria AB.</p>
                     </div>
                     
                     <div class="mt-6 sm:mt-0 flex-shrink-0">
@@ -410,37 +379,25 @@
                     </div>
                 </div>
 
-                <!-- CONTEÚDO DO DASHBOARD -->
+                <!-- DASHBOARD -->
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    
-                    <!-- Coluna Principal: Histórico de Provas -->
                     <div class="lg:col-span-2 space-y-8">
-                        
                         <div class="passport-card">
                             <h3 class="text-2xl font-extrabold text-accent flex items-center mb-4">
                                 <i class="fas fa-graduation-cap mr-3 text-3xl"></i> Histórico de Provas CNH
                             </h3>
-                            <div class="space-y-6" id="exam-results-container">
-                                <!-- Resultados dos exames serão injetados aqui -->
-                            </div>
+                            <div class="space-y-6" id="exam-results-container"></div>
                         </div>
 
-                        <!-- Agendamentos Recentes (Melhoria 3: Monetização) -->
                         <div class="bg-white p-6 rounded-2xl shadow-lg border-t-4 border-primary">
                             <h3 class="text-2xl font-bold text-gray-800 mb-4 flex items-center">
                                 <i class="fas fa-calendar-alt mr-2 text-primary"></i> Agendamentos Concluídos
                             </h3>
-                            <div class="space-y-4" id="bookings-list">
-                                <!-- Agendamentos concluídos serão injetados aqui -->
-                            </div>
+                            <div class="space-y-4" id="bookings-list"></div>
                         </div>
-
                     </div>
 
-                    <!-- Coluna Lateral: Estatísticas e Mentores -->
                     <div class="space-y-8">
-                        
-                        <!-- Estatísticas Rápidas -->
                         <div class="bg-white p-6 rounded-2xl shadow-lg border-t-4 border-accent">
                             <h3 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
                                 <i class="fas fa-chart-bar mr-2 text-accent"></i> Minhas Métricas
@@ -452,27 +409,21 @@
                                 <p class="flex justify-between text-gray-700"><span>Média de Avaliação:</span> <span class="font-bold text-accent">5.0 <i class="fas fa-star"></i></span></p>
                             </div>
                         </div>
-
-                        <!-- Botão de Ação -->
                         <button class="w-full btn-accent text-white font-bold py-3 rounded-xl shadow-xl flex items-center justify-center transition">
                             <i class="fas fa-plus mr-2"></i> Reservar Nova Aula 
                         </button>
-
                     </div>
                 </div>
-
             </div>
         </div>
         
-        <!-- NOVO: CHATBOT FAB (Floating Action Button) -->
+        <!-- CHATBOT -->
         <div class="chatbot-fab bg-accent text-white" onclick="openChatbotModal()">
             <i class="fas fa-robot text-3xl"></i>
         </div>
 
-        <!-- NOVO: MODAL DE CHATBOT -->
         <div id="chatbot-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50 hidden transition-opacity" onclick="closeChatbotModal()">
             <div class="bg-white rounded-3xl w-full max-w-lg h-5/6 shadow-2xl flex flex-col" onclick="event.stopPropagation()">
-                <!-- Chat Header -->
                 <div class="bg-primary text-white p-5 rounded-t-3xl flex justify-between items-center border-b-4 border-accent">
                     <h3 class="text-xl font-bold flex items-center">
                         <i class="fas fa-robot mr-2 text-accent"></i> Mestre CNH AI
@@ -481,22 +432,16 @@
                         <i class="fas fa-times text-xl"></i>
                     </button>
                 </div>
-
-                <!-- Chat Body (Messages) -->
                 <div id="chat-messages" class="flex-grow p-4 overflow-y-auto space-y-4">
-                    <!-- Mensagem de boas-vindas -->
                     <div class="flex justify-start">
                         <div class="bg-gray-100 p-3 rounded-t-xl rounded-br-xl text-gray-700 shadow-md max-w-xs">
-                            Olá! Sou o **Mestre CNH AI**, seu especialista em regras e procedimentos. Como posso ajudar você a dominar o volante hoje?
-                            <p class="text-xs text-gray-500 mt-1">Tópicos: Baliza, Sinais, Reagendamento, Documentação.</p>
+                            Olá! Sou o **Mestre CNH AI**, seu especialista em regras e procedimentos.
                         </div>
                     </div>
                 </div>
-
-                <!-- Chat Footer (Input) -->
                 <form id="chatbot-form" class="p-4 border-t border-gray-200">
                     <div class="flex gap-3">
-                        <input type="text" id="chatbot-input" placeholder="Pergunte sobre baliza, reagendamento, etc." required class="flex-grow p-3 border-2 border-gray-200 rounded-xl focus:ring-accent focus:border-accent transition">
+                        <input type="text" id="chatbot-input" placeholder="Pergunte algo..." required class="flex-grow p-3 border-2 border-gray-200 rounded-xl focus:ring-accent focus:border-accent transition">
                         <button type="submit" id="chatbot-send-btn" class="btn-primary text-white font-bold py-3 px-6 rounded-xl shadow-md flex-shrink-0">
                             <i class="fas fa-paper-plane"></i>
                         </button>
@@ -505,74 +450,60 @@
             </div>
         </div>
 
-    </div> <!-- Fim do app-container -->
+    </div>
 
-    <!-- Toast Notification (Feedback não-invasivo) -->
     <div id="app-toast" class="opacity-0 hidden"></div>
 
-    <!-- SCRIPT PRINCIPAL (Lógica Geral e EmailJS - RODA NO FILE://) -->
+    <!-- SCRIPT PRINCIPAL -->
     <script>
-        // --- Constantes de Configuração ---
         const API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=";
         const RETRY_MAX = 3;
         const REGISTRATION_EMAIL_TARGET = 'danieldias0312@gmail.com';
         const APPROVED_LOGIN_EMAIL = 'alunoaprovado@apex.com'; 
         
-        // --- CHAVES REAIS DO USUÁRIO (JÁ INSERIDAS) ---
-        // SUBSTITUA AQUI COM OS IDS QUE VOCÊ PEGOU NO EMAILJS
         const EMAILJS_SERVICE_ID = 'service_danieldiaxf'; 
         const EMAILJS_TEMPLATE_ID = 'template_danieldiaxf';
         const EMAILJS_PUBLIC_KEY = 'yPtGfWJgxfETRB5LP';
 
-        // --- Mock Data ---
         const MOCK_MENTORS = [
-            { id: 'm1', name: 'Julia Silva.', city: 'São Paulo, SP', car: 'Fiat Uno', rating: 4.9, reviews: 120, gender: 'Feminino', proximity: 5, bio: 'Especialista em baliza e controle de ansiedade. 5 anos de experiência.', photo: 'https://placehold.co/100x100/197149/ffffff?text=JS', cnhCategory: 'B' },
-            { id: 'm2', name: 'Roberto Costa.', city: 'Campinas, SP', car: 'Chevrolet Onix', rating: 4.5, reviews: 85, gender: 'Masculino', proximity: 15, bio: 'Foco total na prova prática, instrutor paciente e didático.', photo: 'https://placehold.co/100x100/F59E0B/ffffff?text=RC', cnhCategory: 'AB' },
-            { id: 'm3', name: 'Patrícia Alves.', city: 'São Paulo, SP', car: 'Volkswagen Gol', rating: 5.0, reviews: 30, gender: 'Feminino', proximity: 8, bio: 'Aulas teóricas com macetes e revisão prática focada em trânsito urbano.', photo: 'https://placehold.co/100x100/197149/ffffff?text=PA', cnhCategory: 'B' },
-            { id: 'm4', name: 'Gustavo Lucas.', city: 'Ribeirão P.', car: 'Hyundai HB20', rating: 4.2, reviews: 50, gender: 'Masculino', proximity: 2, bio: 'Prepara para a CNH tipo A e B. Especialista em leis de trânsito.', photo: 'https://placehold.co/100x100/F59E0B/ffffff?text=GL', cnhCategory: 'A' },
-            { id: 'm5', name: 'André Mota.', city: 'Brasília, DF.', car: 'Volkswagen UP', rating: 4.5, reviews: 70, gender: 'Masculino', proximity: 2, bio: 'Prepara para a CNH tipo A. Especialista em provas práticas.', photo: 'https://placehold.co/100x100/197149/ffffff?text=AM', cnhCategory: 'A' },
-            { id: 'm6', name: 'Ana Luísa.', city: 'Santa Catarina.', car: 'Fiat Mobi', rating: 4.7, reviews: 30, gender: 'Feminino', proximity: 2, bio: 'Prepara para a CNH tipo A.', photo: 'https://placehold.co/100x100/F59E0B/ffffff?text=AL', cnhCategory: 'A' },
+            { id: 'm1', name: 'Julia Silva.', city: 'São Paulo, SP', car: 'Fiat Uno', rating: 4.9, reviews: 120, gender: 'Feminino', proximity: 5, bio: 'Especialista em baliza.', photo: 'https://placehold.co/100x100/197149/ffffff?text=JS', cnhCategory: 'B' },
+            { id: 'm2', name: 'Roberto Costa.', city: 'Campinas, SP', car: 'Chevrolet Onix', rating: 4.5, reviews: 85, gender: 'Masculino', proximity: 15, bio: 'Foco total na prova prática.', photo: 'https://placehold.co/100x100/F59E0B/ffffff?text=RC', cnhCategory: 'AB' },
+            { id: 'm3', name: 'Patrícia Alves.', city: 'São Paulo, SP', car: 'Volkswagen Gol', rating: 5.0, reviews: 30, gender: 'Feminino', proximity: 8, bio: 'Aulas teóricas.', photo: 'https://placehold.co/100x100/197149/ffffff?text=PA', cnhCategory: 'B' },
+            { id: 'm4', name: 'Gustavo Lucas.', city: 'Ribeirão P.', car: 'Hyundai HB20', rating: 4.2, reviews: 50, gender: 'Masculino', proximity: 2, bio: 'Prepara para a CNH A e B.', photo: 'https://placehold.co/100x100/F59E0B/ffffff?text=GL', cnhCategory: 'A' },
+            { id: 'm5', name: 'André Mota.', city: 'Brasília, DF.', car: 'Volkswagen UP', rating: 4.5, reviews: 70, gender: 'Masculino', proximity: 2, bio: 'Prepara para a CNH A.', photo: 'https://placehold.co/100x100/197149/ffffff?text=AM', cnhCategory: 'A' },
+            { id: 'm6', name: 'Ana Luísa.', city: 'Santa Catarina.', car: 'Fiat Mobi', rating: 4.7, reviews: 30, gender: 'Feminino', proximity: 2, bio: 'Prepara para a CNH A.', photo: 'https://placehold.co/100x100/F59E0B/ffffff?text=AL', cnhCategory: 'A' },
         ];
         
         const MOCK_EXAM_RESULTS = {
-            theoretical: [
-                { attempt: 1, score: 25, result: 'Reprovado', date: '2025-10-10' },
-                { attempt: 2, score: 32, result: 'Aprovado', date: '2025-11-05' },
-            ],
-            practical: [
-                { attempt: 1, result: 'Reprovado', reason: 'Queimou a embreagem 3x na rampa.', date: '2025-11-25' },
-                { attempt: 2, result: 'Aprovado', reason: 'N/A', date: '2025-12-10' },
-            ]
+            theoretical: [ { attempt: 1, score: 25, result: 'Reprovado', date: '2025-10-10' }, { attempt: 2, score: 32, result: 'Aprovado', date: '2025-11-05' } ],
+            practical: [ { attempt: 1, result: 'Reprovado', reason: 'Queimou a embreagem.', date: '2025-11-25' }, { attempt: 2, result: 'Aprovado', reason: 'N/A', date: '2025-12-10' } ]
         };
 
         const MOCK_STUDENT_BOOKINGS = [
             { mentor: 'Julia Silva', type: 'Prática', date: '01/12/2025', status: 'Concluído', price: 'R$ 180,00' },
             { mentor: 'Ricardo Vaz', type: 'Teórica', date: '20/11/2025', status: 'Concluído', price: 'R$ 80,00' },
-            { mentor: 'Julia Silva', type: 'Prática', date: '15/11/2025', status: 'Concluído', price: 'R$ 180,00' },
             { mentor: 'Julia Silva', type: 'Prática', date: '15/12/2025', status: 'Confirmado', price: 'R$ 180,00' },
         ];
 
-        let mentorsData = MOCK_MENTORS; // Inicia com dados Mock para o MVP sem servidor
+        let mentorsData = MOCK_MENTORS; 
 
         // --- Funções Globais ---
-        
         function renderMentors(mentors) {
              const container = document.getElementById('mentor-list-container');
              container.innerHTML = '';
              if (mentors.length === 0) {
-                 container.innerHTML = '<p class="text-center text-gray-500 py-10">Nenhum mentor encontrado com os filtros aplicados.</p>';
+                 container.innerHTML = '<p class="text-center text-gray-500 py-10">Nenhum mentor encontrado.</p>';
                  return;
              }
              mentors.forEach(mentor => {
                  const card = document.createElement('div');
                  card.className = 'bg-white shadow-lg hover:shadow-2xl transition duration-300 rounded-2xl p-6 flex flex-col sm:flex-row gap-4 border-b-4 border-primary/50 cursor-pointer';
-                 card.setAttribute('data-mentor-id', mentor.id);
                  card.onclick = () => openMentorModal(mentor);
                  const ratingStars = '★'.repeat(Math.floor(mentor.rating)) + '☆'.repeat(5 - Math.floor(mentor.rating));
                  card.innerHTML = `
                      <div class="flex-shrink-0 flex items-center justify-center sm:justify-start">
                          <div class="profile-border">
-                             <img src="${mentor.photo}" alt="Foto de ${mentor.name}" class="h-16 w-16 sm:h-20 sm:w-20 object-cover rounded-full bg-gray-200">
+                             <img src="${mentor.photo}" alt="Foto" class="h-16 w-16 sm:h-20 sm:w-20 object-cover rounded-full bg-gray-200">
                          </div>
                      </div>
                      <div class="flex-grow">
@@ -580,16 +511,13 @@
                          <div class="flex items-center text-sm mt-1 mb-2">
                              <span class="text-accent font-bold mr-1">${mentor.rating.toFixed(1)}</span>
                              <span class="text-accent">${ratingStars}</span>
-                             <span class="text-gray-500 ml-2">(${mentor.reviews} avaliações)</span>
+                             <span class="text-gray-500 ml-2">(${mentor.reviews})</span>
                          </div>
-                         <p class="text-sm text-gray-700 mb-1"><i class="fas fa-id-card-alt text-accent mr-1"></i> Categoria: <span class="font-semibold">${mentor.cnhCategory}</span></p>
                          <p class="text-sm text-gray-700 mb-1"><i class="fas fa-map-marker-alt text-primary mr-1"></i> ${mentor.city} (${mentor.proximity}km)</p>
-                         <p class="text-sm text-gray-700"><i class="fas fa-car text-primary mr-1"></i> Carro Prática: ${mentor.car}</p>
+                         <p class="text-sm text-gray-700"><i class="fas fa-car text-primary mr-1"></i> ${mentor.car}</p>
                      </div>
                      <div class="flex-shrink-0 flex flex-col justify-center items-end">
-                         <button class="btn-primary text-white font-semibold py-2 px-4 rounded-full text-sm shadow-md" onclick="event.stopPropagation(); openMentorModal(mentorsData.find(m => m.id === '${mentor.id}'));">
-                             <i class="fas fa-search"></i> Ver Perfil
-                         </button>
+                         <button class="btn-primary text-white font-semibold py-2 px-4 rounded-full text-sm shadow-md">Ver Perfil</button>
                      </div>
                  `;
                  container.appendChild(card);
@@ -601,36 +529,13 @@
             container.innerHTML = '';
             let theoreticalHtml = `<h4 class="text-xl font-bold text-accent mb-3">Prova Teórica</h4>`;
             data.theoretical.forEach(exam => {
-                const statusIcon = exam.result === 'Aprovado' ? 'fas fa-check-circle text-green-400' : 'fas fa-times-circle text-red-500';
                 const statusColor = exam.result === 'Aprovado' ? 'text-green-400' : 'text-red-500';
-                theoreticalHtml += `
-                    <div class="p-3 bg-white/10 rounded-lg shadow-inner flex justify-between items-center border-l-4 border-accent">
-                        <div>
-                            <p class="font-semibold">Tentativa ${exam.attempt} (${exam.date})</p>
-                            <p class="text-sm text-white/70">Nota: ${exam.score}/40</p>
-                        </div>
-                        <div class="flex items-center font-bold ${statusColor}">
-                            <i class="${statusIcon} mr-2"></i> ${exam.result}
-                        </div>
-                    </div>
-                `;
+                theoreticalHtml += `<div class="p-3 bg-white/10 rounded-lg shadow-inner flex justify-between items-center border-l-4 border-accent"><div><p class="font-semibold">Tentativa ${exam.attempt}</p></div><div class="font-bold ${statusColor}">${exam.result}</div></div>`;
             });
             let practicalHtml = `<h4 class="text-xl font-bold text-accent mb-3 mt-8">Prova Prática</h4>`;
             data.practical.forEach(exam => {
-                const statusIcon = exam.result === 'Aprovado' ? 'fas fa-check-circle text-green-400' : 'fas fa-exclamation-triangle text-red-500';
                 const statusColor = exam.result === 'Aprovado' ? 'text-green-400' : 'text-red-500';
-                const reasonDisplay = exam.reason !== 'N/A' ? `<p class="text-xs text-red-300 italic">Motivo: ${exam.reason}</p>` : '';
-                practicalHtml += `
-                    <div class="p-3 bg-white/10 rounded-lg shadow-inner border-l-4 ${exam.result === 'Aprovado' ? 'border-accent' : 'border-red-500'}">
-                        <div class="flex justify-between items-center">
-                            <p class="font-semibold">Tentativa ${exam.attempt} (${exam.date})</p>
-                            <div class="flex items-center font-bold ${statusColor}">
-                                <i class="${statusIcon} mr-2"></i> ${exam.result}
-                            </div>
-                        </div>
-                        ${reasonDisplay}
-                    </div>
-                `;
+                practicalHtml += `<div class="p-3 bg-white/10 rounded-lg shadow-inner border-l-4 ${exam.result === 'Aprovado' ? 'border-accent' : 'border-red-500'}"><div class="flex justify-between"><p class="font-semibold">Tentativa ${exam.attempt}</p><div class="${statusColor} font-bold">${exam.result}</div></div></div>`;
             });
             container.innerHTML = theoreticalHtml + practicalHtml;
         }
@@ -639,23 +544,8 @@
             const list = document.getElementById('bookings-list');
             list.innerHTML = '';
             bookingData.forEach(booking => {
-                const statusColor = booking.status === 'Concluído' ? 'bg-primary/10 text-primary' : 'bg-accent/10 text-accent';
-                const itemHtml = `
-                    <div class="flex justify-between items-center p-4 bg-gray-50 rounded-xl shadow-sm border-l-4 border-primary">
-                        <div>
-                            <p class="font-bold text-gray-800">${booking.mentor} - ${booking.type}</p>
-                            <p class="text-sm text-gray-600">${booking.date} | ${booking.price}</p>
-                        </div>
-                        <span class="text-xs font-bold px-3 py-1 rounded-full ${statusColor}">
-                            ${booking.status}
-                        </span>
-                    </div>
-                `;
-                list.innerHTML += itemHtml;
+                list.innerHTML += `<div class="flex justify-between items-center p-4 bg-gray-50 rounded-xl shadow-sm border-l-4 border-primary"><div><p class="font-bold text-gray-800">${booking.mentor}</p><p class="text-sm text-gray-600">${booking.date}</p></div><span class="text-xs font-bold px-3 py-1 rounded-full bg-primary/10 text-primary">${booking.status}</span></div>`;
             });
-            if (bookingData.length === 0) {
-                 list.innerHTML = '<p class="text-center text-gray-500 italic">Nenhum agendamento encontrado.</p>';
-            }
         }
         
         async function fetchWithRetries(url, options, retries = RETRY_MAX) {
@@ -664,15 +554,13 @@
                     const response = await fetch(url, options);
                     if (response.ok) return response;
                     if (response.status === 429 && i < retries - 1) { 
-                        const delay = Math.pow(2, i) * 1000;
-                        await new Promise(resolve => setTimeout(resolve, delay));
+                        await new Promise(resolve => setTimeout(resolve, Math.pow(2, i) * 1000));
                         continue;
                     }
-                    throw new Error(`API returned status ${response.status}`);
+                    throw new Error(`Status ${response.status}`);
                 } catch (error) {
                     if (i === retries - 1) throw error;
-                    const delay = Math.pow(2, i) * 1000;
-                    await new Promise(resolve => setTimeout(resolve, delay));
+                    await new Promise(resolve => setTimeout(resolve, Math.pow(2, i) * 1000));
                 }
             }
         }
@@ -684,101 +572,68 @@
             if (!query) return;
             inputElement.value = '';
             const messagesContainer = document.getElementById('chat-messages');
-            messagesContainer.innerHTML += `
-                <div class="flex justify-end">
-                    <div class="bg-accent text-white p-3 rounded-t-xl rounded-bl-xl shadow-md max-w-xs">
-                        ${query}
-                    </div>
-                </div>
-            `;
+            messagesContainer.innerHTML += `<div class="flex justify-end"><div class="bg-accent text-white p-3 rounded-t-xl rounded-bl-xl shadow-md max-w-xs">${query}</div></div>`;
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
             const loadingId = 'loading-' + Date.now();
-            messagesContainer.innerHTML += `
-                <div class="flex justify-start" id="${loadingId}">
-                    <div class="bg-gray-100 p-3 rounded-t-xl rounded-br-xl text-gray-700 shadow-md max-w-xs">
-                        <i class="fas fa-spinner fa-spin mr-2"></i> Digitanto...
-                    </div>
-                </div>
-            `;
+            messagesContainer.innerHTML += `<div class="flex justify-start" id="${loadingId}"><div class="bg-gray-100 p-3 rounded-t-xl rounded-br-xl text-gray-700 shadow-md max-w-xs"><i class="fas fa-spinner fa-spin mr-2"></i> Digitanto...</div></div>`;
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
-            const systemInstruction = `Você é o Mestre CNH AI...`;
-            const payload = {
-                contents: [{ parts: [{ text: query }] }],
-                systemInstruction: { parts: [{ text: systemInstruction }] },
-            };
+            
+            const payload = { contents: [{ parts: [{ text: query }] }], systemInstruction: { parts: [{ text: "Você é o Mestre CNH AI." }] } };
             try {
-                const response = await fetchWithRetries(API_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
+                const response = await fetchWithRetries(API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
                 const result = await response.json();
-                const aiText = result.candidates?.[0]?.content?.parts?.[0]?.text || "Desculpe, tente novamente.";
-                document.getElementById(loadingId).innerHTML = `
-                    <div class="bg-gray-100 p-3 rounded-t-xl rounded-br-xl text-gray-700 shadow-md max-w-xs">
-                        ${aiText.replace(/\n/g, '<br>')}
-                    </div>
-                `;
+                const aiText = result.candidates?.[0]?.content?.parts?.[0]?.text || "Tente novamente.";
+                document.getElementById(loadingId).innerHTML = `<div class="bg-gray-100 p-3 rounded-t-xl rounded-br-xl text-gray-700 shadow-md max-w-xs">${aiText.replace(/\n/g, '<br>')}</div>`;
             } catch (error) {
-                console.error("Gemini API Error:", error);
-                document.getElementById(loadingId).innerHTML = `<div class="bg-red-100 p-3 rounded-t-xl rounded-br-xl text-red-700 shadow-md max-w-xs">Erro ao conectar.</div>`;
+                document.getElementById(loadingId).innerHTML = `<div class="bg-red-100 p-3 text-red-700">Erro.</div>`;
             }
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
         };
 
-        window.showLoginScreen = () => {
-            document.getElementById('login-screen').classList.remove('hidden');
-            document.getElementById('app-container').classList.add('hidden');
-        }
-        window.hideLoginScreen = () => {
-            document.getElementById('login-screen').classList.add('hidden');
-            document.getElementById('app-container').classList.remove('hidden');
-        }
+        window.showLoginScreen = () => { document.getElementById('login-screen').classList.remove('hidden'); document.getElementById('app-container').classList.add('hidden'); }
+        window.hideLoginScreen = () => { document.getElementById('login-screen').classList.add('hidden'); document.getElementById('app-container').classList.remove('hidden'); }
         
-        // --- 1. VALIDAÇÃO DO CADASTRO ---
-        function validatePassword(password) {
-            // Mínimo 8 chars, 1 Maiúscula, 1 Especial
-            const regex = /^(?=.*[A-Z])(?=.*[!@#$&*]).{8,}$/;
-            return regex.test(password);
-        }
+        function validatePassword(password) { return /^(?=.*[A-Z])(?=.*[!@#$&*]).{8,}$/.test(password); }
 
-        // --- 2. LÓGICA DE LOGIN (VERIFICAÇÃO DE APROVAÇÃO) ---
         window.simulateLogin = (event) => {
             event.preventDefault();
             const email = document.getElementById('email').value.trim().toLowerCase();
-            const password = document.getElementById('password').value;
             const loginButton = document.getElementById('login-button');
             const originalText = loginButton.innerHTML;
 
             loginButton.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i> Verificando...`;
             loginButton.disabled = true;
 
-            // Recupera lista de e-mails aprovados localmente (para simular que o admin aprovou)
-            // Em produção, isso viria do banco de dados real.
             const approvedEmails = JSON.parse(localStorage.getItem('apex_approved_emails') || '[]');
-            
-            // Verifica se é o admin (hardcoded) ou um usuário recém-cadastrado (localStorage)
             const isApproved = (email === APPROVED_LOGIN_EMAIL.toLowerCase()) || approvedEmails.includes(email);
 
             setTimeout(() => {
                 if (isApproved) {
-                    showToast(`Bem-vindo, ${email}! Acesso Premium liberado.`, 'success');
-                    // Define user name in profile dynamically if found
+                    showToast(`Bem-vindo! Acesso liberado.`, 'success');
+                    
+                    // --- RECUPERA NOME E ENDEREÇO DO LOCALSTORAGE ---
                     const userName = localStorage.getItem('apex_user_name_' + email);
+                    const userLocation = JSON.parse(localStorage.getItem('apex_user_location_' + email) || 'null');
+
                     if(userName) {
                         document.getElementById('profile-name').textContent = userName;
                         document.getElementById('profile-email').textContent = email;
                     }
 
+                    // --- ATUALIZA A CIDADE NO PERFIL ---
+                    if (userLocation) {
+                        document.getElementById('profile-location').innerHTML = `
+                            <i class="fas fa-map-marker-alt mr-1"></i> ${userLocation.city}, ${userLocation.state}
+                        `;
+                    }
+
                     hideLoginScreen();
-                    loginButton.innerHTML = originalText;
-                    loginButton.disabled = false;
                     applyFilters(); 
                 } else {
-                    showToast('Acesso negado. Seu cadastro está pendente ou não existe.', 'error');
-                    loginButton.innerHTML = originalText;
-                    loginButton.disabled = false;
+                    showToast('Acesso negado. Seu cadastro está pendente.', 'error');
                 }
+                loginButton.innerHTML = originalText;
+                loginButton.disabled = false;
             }, 1500); 
         }
 
@@ -787,27 +642,25 @@
             document.getElementById('sign-up-modal').classList.remove('hidden');
             document.getElementById('signup-feedback-message').classList.add('hidden');
             document.getElementById('signup-form').classList.remove('hidden');
-            // Limpa campos
             document.getElementById('signup-form').reset();
         }
-        window.closeSignUpModal = () => {
-            document.getElementById('sign-up-modal').classList.add('hidden');
-            document.getElementById('login-screen').classList.remove('hidden');
-        }
+        window.closeSignUpModal = () => { document.getElementById('sign-up-modal').classList.add('hidden'); document.getElementById('login-screen').classList.remove('hidden'); }
 
-        // --- 3. HANDLER DE CADASTRO COM AUTO-APROVAÇÃO (DEMO) ---
         window.handleSignUp = async (event) => {
             event.preventDefault();
             const name = document.getElementById('signup-name').value;
             const email = document.getElementById('signup-email').value.toLowerCase();
             const phone = document.getElementById('signup-phone').value;
             const password = document.getElementById('signup-password').value;
+            // NOVOS CAMPOS
+            const city = document.getElementById('signup-city').value;
+            const state = document.getElementById('signup-state').value;
+
             const category = document.getElementById('signup-category').value;
             const signUpButton = document.getElementById('signup-button');
 
-            // Validação de Senha
             if (!validatePassword(password)) {
-                showToast('Senha fraca! Use mín. 8 caracteres, 1 maiúscula e 1 especial (!@#$&*)', 'error');
+                showToast('Senha fraca! Use mín. 8 caracteres, 1 maiúscula e 1 especial.', 'error');
                 return;
             }
 
@@ -820,69 +673,45 @@
                 user_name: name,
                 user_email: email,
                 user_phone: phone || 'N/A',
+                user_city: city, // Enviando Cidade
+                user_state: state, // Enviando Estado
                 user_category: category,
-                title: `Novo Lead: ${name} - Categoria ${category}`,
+                title: `Novo Lead: ${name} - ${city}/${state}`,
                 name: name,
                 email: email
             };
             
             let isEmailSentSuccessfully = false;
-
             try {
-                console.log("Tentando enviar email via EmailJS...");
-                if (typeof emailjs === 'undefined') {
-                     throw new Error("SDK EmailJS não detectado. Verifique a conexão com a internet.");
+                if (typeof emailjs !== 'undefined') {
+                    const result = await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, templateParams);
+                    if (result.status === 200) isEmailSentSuccessfully = true;
                 }
-                const result = await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, templateParams);
-                console.log("Resultado EmailJS:", result);
-                if (result.status === 200) {
-                    isEmailSentSuccessfully = true;
-                }
-            } catch (error) {
-                console.error("Erro no envio EmailJS:", error);
-                alert("Erro ao enviar email: " + JSON.stringify(error));
-            }
+            } catch (error) { console.error(error); }
 
             if (isEmailSentSuccessfully) {
-                // AQUI ESTÁ O SEGREDO PARA A DEMO FUNCIONAR:
-                // Salva o e-mail na lista de "aprovados" do navegador (localStorage)
                 const currentApproved = JSON.parse(localStorage.getItem('apex_approved_emails') || '[]');
                 if (!currentApproved.includes(email)) {
                     currentApproved.push(email);
                     localStorage.setItem('apex_approved_emails', JSON.stringify(currentApproved));
-                    // Salva o nome para exibir no perfil
+                    
+                    // --- SALVA O NOME E O ENDEREÇO PARA USO POSTERIOR ---
                     localStorage.setItem('apex_user_name_' + email, name);
+                    localStorage.setItem('apex_user_location_' + email, JSON.stringify({ city: city, state: state }));
                 }
 
-                const formElement = document.getElementById('signup-form');
-                const feedbackElement = document.getElementById('signup-feedback-message');
-                formElement.classList.add('hidden');
-                feedbackElement.classList.remove('hidden');
-                showToast('Sucesso! Cadastro realizado e acesso liberado para demonstração.', 'success');
+                document.getElementById('signup-form').classList.add('hidden');
+                document.getElementById('signup-feedback-message').classList.remove('hidden');
+                showToast('Cadastro realizado!', 'success');
             }
             signUpButton.innerHTML = originalText;
             signUpButton.disabled = false;
         }
         
-        // --- UI Helpers ---
-        function openChatbotModal() {
-            document.getElementById('chatbot-modal').classList.remove('hidden');
-            document.getElementById('chatbot-form').addEventListener('submit', sendChatbotQuery);
-        }
-        function closeChatbotModal() {
-            document.getElementById('chatbot-modal').classList.add('hidden');
-            document.getElementById('chatbot-form').removeEventListener('submit', sendChatbotQuery);
-        }
-        function openUserProfileModal() {
-            document.getElementById('user-profile-modal').classList.remove('hidden');
-            document.body.style.overflow = 'hidden';
-            renderExamResults(MOCK_EXAM_RESULTS);
-            renderStudentBookings(MOCK_STUDENT_BOOKINGS);
-        }
-        function closeUserProfileModal() {
-            document.getElementById('user-profile-modal').classList.add('hidden');
-            document.body.style.overflow = '';
-        }
+        function openChatbotModal() { document.getElementById('chatbot-modal').classList.remove('hidden'); document.getElementById('chatbot-form').addEventListener('submit', sendChatbotQuery); }
+        function closeChatbotModal() { document.getElementById('chatbot-modal').classList.add('hidden'); document.getElementById('chatbot-form').removeEventListener('submit', sendChatbotQuery); }
+        function openUserProfileModal() { document.getElementById('user-profile-modal').classList.remove('hidden'); document.body.style.overflow = 'hidden'; renderExamResults(MOCK_EXAM_RESULTS); renderStudentBookings(MOCK_STUDENT_BOOKINGS); }
+        function closeUserProfileModal() { document.getElementById('user-profile-modal').classList.add('hidden'); document.body.style.overflow = ''; }
         function openMentorModal(mentor) {
             document.getElementById('modal-mentor-name').textContent = mentor.name;
             document.getElementById('modal-mentor-photo').src = mentor.photo;
@@ -890,41 +719,17 @@
             document.getElementById('modal-mentor-car').textContent = mentor.car;
             document.getElementById('modal-mentor-bio').textContent = mentor.bio;
             document.getElementById('modal-mentor-rating').textContent = mentor.rating.toFixed(1);
-            const modalRatingStars = '★'.repeat(Math.floor(mentor.rating)) + '☆'.repeat(5 - Math.floor(mentor.rating));
-            document.getElementById('modal-mentor-rating-stars').textContent = modalRatingStars;
             document.getElementById('modal-mentor-reviews').textContent = `(${mentor.reviews} avaliações)`;
             document.getElementById('mentor-modal').classList.remove('hidden');
         }
-        function closeMentorModal() {
-            document.getElementById('mentor-modal').classList.add('hidden');
-        }
-        function startBookingProcess(serviceType) {
-            const mentorName = document.getElementById('modal-mentor-name').textContent;
-            const bookingDate = document.getElementById('booking-date').value;
-            if (!bookingDate) {
-                showToast('Por favor, selecione uma data.', 'error');
-                return;
-            }
-            showToast(`Sucesso! Agendamento com ${mentorName} iniciado.`, 'success');
-            closeMentorModal();
-        }
-        function submitRating() {
-            showToast(`Avaliação enviada com sucesso!`, 'success');
-            closeMentorModal();
-        }
+        function closeMentorModal() { document.getElementById('mentor-modal').classList.add('hidden'); }
+        function startBookingProcess(serviceType) { showToast(`Agendamento iniciado.`, 'success'); closeMentorModal(); }
         function showToast(message, type) {
             const toast = document.getElementById('app-toast');
             toast.textContent = message;
-            toast.className = 'fixed bottom-5 right-5 p-4 rounded-lg shadow-xl text-white transition-opacity duration-300 z-50';
-            if (type === 'success') toast.classList.add('bg-primary');
-            else toast.classList.add('bg-red-600');
+            toast.className = 'fixed bottom-5 right-5 p-4 rounded-lg shadow-xl text-white transition-opacity duration-300 z-50 ' + (type === 'success' ? 'bg-primary' : 'bg-red-600');
             toast.classList.remove('opacity-0', 'hidden');
-            toast.classList.add('opacity-100');
-            setTimeout(() => {
-                toast.classList.remove('opacity-100');
-                toast.classList.add('opacity-0');
-                setTimeout(() => toast.classList.add('hidden'), 300);
-            }, 3000);
+            setTimeout(() => { toast.classList.add('opacity-0'); setTimeout(() => toast.classList.add('hidden'), 300); }, 3000);
         }
         
         function applyFilters() {
@@ -945,29 +750,14 @@
             renderMentors(filteredMentors);
         }
         
-        // Initial setup on window load
         window.onload = () => {
-            // 1. Inicializa o EmailJS
-            if (typeof emailjs !== 'undefined') {
-                emailjs.init(EMAILJS_PUBLIC_KEY);
-                console.log("EmailJS Initialized with Key: " + EMAILJS_PUBLIC_KEY);
-            } else {
-                console.error("EmailJS SDK not loaded");
-            }
-
-            // 2. UI Setup
+            if (typeof emailjs !== 'undefined') emailjs.init(EMAILJS_PUBLIC_KEY);
             showLoginScreen();
-            
-            // 3. Event Listeners
             document.getElementById('login-form').addEventListener('submit', simulateLogin);
-            const btnOpenSignUp = document.getElementById('btn-open-signup-link');
-            if (btnOpenSignUp) btnOpenSignUp.addEventListener('click', (e) => { e.preventDefault(); openSignUpModal(); });
-            const btnCloseSignUp = document.getElementById('btn-close-signup-icon');
-            if (btnCloseSignUp) btnCloseSignUp.addEventListener('click', closeSignUpModal);
-            const btnOpenProfile = document.getElementById('btn-open-profile');
-            if (btnOpenProfile) btnOpenProfile.addEventListener('click', openUserProfileModal);
+            document.getElementById('btn-open-signup-link').addEventListener('click', (e) => { e.preventDefault(); openSignUpModal(); });
+            document.getElementById('btn-close-signup-icon').addEventListener('click', closeSignUpModal);
+            document.getElementById('btn-open-profile').addEventListener('click', openUserProfileModal);
             document.getElementById('signup-form').addEventListener('submit', handleSignUp);
-
             if (document.getElementById('search-term')) {
                 document.getElementById('search-term').addEventListener('input', applyFilters);
                 document.getElementById('car-filter').addEventListener('change', applyFilters);
@@ -976,27 +766,6 @@
                 document.getElementById('sort-by').addEventListener('change', applyFilters);
             }
         };
-    </script>
-
-    <!-- SCRIPT DE MODULO SEPARADO (OPCIONAL PARA O FIREBASE) -->
-    <!-- Mantemos separado para não travar o script principal no file:// -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
-        if (Object.keys(firebaseConfig).length !== 0) {
-            try {
-                const app = initializeApp(firebaseConfig);
-                const auth = getAuth(app);
-                // Se o Firebase carregar (em servidor), ele pode gerenciar estado aqui.
-                // Mas a lógica principal de UI está no script padrão acima para garantir funcionamento local.
-                console.log("Firebase Module Loaded");
-            } catch (e) {
-                console.log("Firebase Module failed (expected on file://):", e);
-            }
-        }
     </script>
 </body>
 </html>
