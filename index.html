@@ -83,6 +83,44 @@
             transform: scale(1.05);
             box-shadow: 0 15px 30px rgba(0, 0, 0, 0.4);
         }
+
+        /* Estilos do Calendário */
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 4px;
+        }
+        .calendar-day {
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            font-size: 0.85rem;
+            cursor: pointer;
+            position: relative;
+            transition: background 0.2s;
+        }
+        .calendar-day:hover {
+            background-color: rgba(255,255,255,0.2);
+        }
+        .calendar-day.today {
+            background-color: var(--color-accent);
+            color: white;
+            font-weight: bold;
+        }
+        .calendar-day.has-event::after {
+            content: '';
+            position: absolute;
+            bottom: 4px;
+            width: 4px;
+            height: 4px;
+            background-color: white;
+            border-radius: 50%;
+        }
+        .calendar-day.other-month {
+            opacity: 0.3;
+        }
     </style>
     
 </head>
@@ -145,17 +183,23 @@
                     <input type="email" id="signup-email" required placeholder="usuario@apex.com" class="mt-1 w-full p-3 border-2 border-gray-300 rounded-xl focus:ring-primary focus:border-primary transition">
                 </div>
                 
+                <!-- ALTERAÇÃO 1: Botão de ver senha -->
                 <div>
                     <label for="signup-password" class="block text-sm font-medium text-gray-700">Senha Segura</label>
-                    <input type="password" id="signup-password" required placeholder="**********" class="mt-1 w-full p-3 border-2 border-gray-300 rounded-xl focus:ring-primary focus:border-primary transition">
+                    <div class="relative">
+                        <input type="password" id="signup-password" required placeholder="**********" class="mt-1 w-full p-3 border-2 border-gray-300 rounded-xl focus:ring-primary focus:border-primary transition pr-12">
+                        <button type="button" onclick="togglePasswordVisibility('signup-password', this)" class="absolute inset-y-0 right-0 px-4 flex items-center text-gray-500 hover:text-primary focus:outline-none">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
                 </div>
 
+                <!-- ALTERAÇÃO 2: Máscara de Telefone -->
                 <div>
                     <label for="signup-phone" class="block text-sm font-medium text-gray-700">Telefone</label>
-                    <input type="tel" id="signup-phone" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required placeholder="11999999999" class="mt-1 w-full p-3 border-2 border-gray-300 rounded-xl focus:ring-primary focus:border-primary transition">
+                    <input type="tel" id="signup-phone" maxlength="15" onkeyup="handlePhoneMask(event)" required placeholder="(11) 99999-9999" class="mt-1 w-full p-3 border-2 border-gray-300 rounded-xl focus:ring-primary focus:border-primary transition">
                 </div>
 
-                <!-- NOVOS CAMPOS: ENDEREÇO -->
                 <div class="grid grid-cols-3 gap-3">
                     <div class="col-span-2">
                         <label for="signup-city" class="block text-sm font-medium text-gray-700">Cidade</label>
@@ -240,10 +284,11 @@
                     <i class="fas fa-filter text-primary mr-2"></i> Seleção de Mentores
                 </h2>
                 
+                <!-- ALTERAÇÃO 3: Filtro de Carro removido -->
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
                     <div class="md:col-span-2">
                         <label for="search-term" class="block text-sm font-medium text-gray-700 mb-1">Buscar por Nome ou Cidade </label>
-                        <input type="text" id="search-term" placeholder="Ex: São Paulo ou Gol" class="w-full p-3 border-2 border-gray-200 rounded-xl focus:ring-accent focus:border-accent transition">
+                        <input type="text" id="search-term" placeholder="Ex: São Paulo" class="w-full p-3 border-2 border-gray-200 rounded-xl focus:ring-accent focus:border-accent transition">
                     </div>
                     <div>
                         <label for="gender-filter" class="block text-sm font-medium text-gray-700 mb-1">Gênero</label>
@@ -254,20 +299,7 @@
                             <option value="Outro">Outro</option>
                         </select>
                     </div>
-                    <div>
-                        <label for="car-filter" class="block text-sm font-medium text-gray-700 mb-1">Carro de Prática</label>
-                        <select id="car-filter" class="w-full p-3 border-2 border-gray-200 rounded-xl focus:ring-accent focus:border-accent transition">
-                            <option value="">Qualquer Carro</option>
-                            <option value="Fiat Uno">Fiat Uno</option>
-                            <option value="Chevrolet Onix">Chevrolet Onix</option>
-                            <option value="Volkswagen Gol">Volkswagen Gol</option>
-                            <option value="Hyundai HB20">Hyundai HB20</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <div>
+                     <div>
                         <label for="category-filter" class="block text-sm font-medium text-gray-700 mb-1">Categoria CNH</label>
                         <select id="category-filter" class="w-full p-3 border-2 border-gray-200 rounded-xl focus:ring-accent focus:border-accent transition">
                             <option value="">Todas</option>
@@ -278,6 +310,11 @@
                             <option value="D">D</option>
                         </select>
                     </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <!-- Espaço rearranjado após remoção do filtro de carro -->
+                    <div class="md:col-span-3"></div>
                     <div>
                         <label for="sort-by" class="block text-sm font-medium text-gray-700 mb-1">Ordenar por</label>
                         <select id="sort-by" class="w-full p-3 border-2 border-gray-200 rounded-xl focus:ring-accent focus:border-accent transition">
@@ -285,7 +322,6 @@
                             <option value="proximity">Mais Próximos (km)</option>
                         </select>
                     </div>
-                    <div class="hidden md:block md:col-span-2"></div>
                 </div>
             </div>
 
@@ -382,16 +418,42 @@
                 <!-- DASHBOARD -->
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     <div class="lg:col-span-2 space-y-8">
+                        
+                        <!-- ALTERAÇÃO 4: Calendário substituindo o Histórico -->
                         <div class="passport-card">
-                            <h3 class="text-2xl font-extrabold text-accent flex items-center mb-4">
-                                <i class="fas fa-graduation-cap mr-3 text-3xl"></i> Histórico de Provas CNH
-                            </h3>
-                            <div class="space-y-6" id="exam-results-container"></div>
+                            <div class="flex justify-between items-center mb-4">
+                                <h3 class="text-2xl font-extrabold text-white flex items-center">
+                                    <i class="fas fa-calendar-alt mr-3 text-3xl"></i> Agenda Apex
+                                </h3>
+                                <div class="flex gap-2">
+                                    <button onclick="changeMonth(-1)" class="bg-white/20 hover:bg-white/30 rounded-full w-8 h-8 flex items-center justify-center"><i class="fas fa-chevron-left"></i></button>
+                                    <span id="calendar-month-year" class="font-bold text-lg w-32 text-center">Dez 2025</span>
+                                    <button onclick="changeMonth(1)" class="bg-white/20 hover:bg-white/30 rounded-full w-8 h-8 flex items-center justify-center"><i class="fas fa-chevron-right"></i></button>
+                                </div>
+                            </div>
+                            
+                            <!-- Grid do Calendário -->
+                            <div class="mb-2 grid grid-cols-7 text-center text-xs opacity-70 font-semibold">
+                                <div>D</div><div>S</div><div>T</div><div>Q</div><div>Q</div><div>S</div><div>S</div>
+                            </div>
+                            <div id="calendar-days" class="calendar-grid">
+                                <!-- Dias injetados via JS -->
+                            </div>
+
+                            <div class="mt-4 pt-4 border-t border-white/20">
+                                <p class="text-sm font-semibold mb-2" id="selected-date-display">Selecione um dia para ver ou adicionar eventos.</p>
+                                <div id="day-events-list" class="space-y-2 mb-3 max-h-32 overflow-y-auto">
+                                    <!-- Eventos do dia -->
+                                </div>
+                                <button onclick="addNewEvent()" class="w-full bg-white text-primary font-bold py-2 rounded-lg text-sm hover:bg-gray-100">
+                                    <i class="fas fa-plus mr-1"></i> Adicionar Aula ou Prova
+                                </button>
+                            </div>
                         </div>
 
                         <div class="bg-white p-6 rounded-2xl shadow-lg border-t-4 border-primary">
                             <h3 class="text-2xl font-bold text-gray-800 mb-4 flex items-center">
-                                <i class="fas fa-calendar-alt mr-2 text-primary"></i> Agendamentos Concluídos
+                                <i class="fas fa-history mr-2 text-primary"></i> Agendamentos Concluídos
                             </h3>
                             <div class="space-y-4" id="bookings-list"></div>
                         </div>
@@ -474,11 +536,6 @@
             { id: 'm6', name: 'Ana Luísa.', city: 'Santa Catarina.', car: 'Fiat Mobi', rating: 4.7, reviews: 30, gender: 'Feminino', proximity: 2, bio: 'Prepara para a CNH A.', photo: 'https://placehold.co/100x100/F59E0B/ffffff?text=AL', cnhCategory: 'A' },
         ];
         
-        const MOCK_EXAM_RESULTS = {
-            theoretical: [ { attempt: 1, score: 25, result: 'Reprovado', date: '2025-10-10' }, { attempt: 2, score: 32, result: 'Aprovado', date: '2025-11-05' } ],
-            practical: [ { attempt: 1, result: 'Reprovado', reason: 'Queimou a embreagem.', date: '2025-11-25' }, { attempt: 2, result: 'Aprovado', reason: 'N/A', date: '2025-12-10' } ]
-        };
-
         const MOCK_STUDENT_BOOKINGS = [
             { mentor: 'Julia Silva', type: 'Prática', date: '01/12/2025', status: 'Concluído', price: 'R$ 180,00' },
             { mentor: 'Ricardo Vaz', type: 'Teórica', date: '20/11/2025', status: 'Concluído', price: 'R$ 80,00' },
@@ -486,6 +543,163 @@
         ];
 
         let mentorsData = MOCK_MENTORS; 
+
+        // --- LÓGICA DO CALENDÁRIO ---
+        let currentDate = new Date();
+        let selectedDate = new Date();
+        
+        // Dados de eventos mockados (Simulando provas/aulas antigas)
+        let calendarEvents = [
+            { date: '2025-10-10', type: 'Teórica', title: 'Prova Teórica (Reprovado)' },
+            { date: '2025-11-05', type: 'Teórica', title: 'Prova Teórica (Aprovado)' },
+            { date: '2025-11-25', type: 'Prática', title: 'Prova Prática (Reprovado)' },
+            { date: '2025-12-10', type: 'Prática', title: 'Prova Prática (Aprovado)' }
+        ];
+
+        function renderCalendar() {
+            const year = currentDate.getFullYear();
+            const month = currentDate.getMonth();
+            
+            const monthNames = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+            document.getElementById('calendar-month-year').textContent = `${monthNames[month]} ${year}`;
+            
+            const firstDayIndex = new Date(year, month, 1).getDay();
+            const lastDay = new Date(year, month + 1, 0).getDate();
+            const prevLastDay = new Date(year, month, 0).getDate();
+            
+            const daysContainer = document.getElementById('calendar-days');
+            daysContainer.innerHTML = "";
+            
+            // Dias do mês anterior
+            for (let x = firstDayIndex; x > 0; x--) {
+                const dayDiv = document.createElement("div");
+                dayDiv.innerHTML = prevLastDay - x + 1;
+                dayDiv.className = "calendar-day other-month";
+                daysContainer.appendChild(dayDiv);
+            }
+            
+            // Dias do mês atual
+            for (let i = 1; i <= lastDay; i++) {
+                const dayDiv = document.createElement("div");
+                dayDiv.innerHTML = i;
+                dayDiv.className = "calendar-day";
+                
+                // Formata data string YYYY-MM-DD
+                const dateString = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
+                
+                // Verifica se é hoje
+                if (i === new Date().getDate() && month === new Date().getMonth() && year === new Date().getFullYear()) {
+                    dayDiv.classList.add("today");
+                }
+                
+                // Verifica eventos
+                const hasEvent = calendarEvents.some(e => e.date === dateString);
+                if (hasEvent) dayDiv.classList.add("has-event");
+                
+                dayDiv.onclick = () => selectDate(i, month, year);
+                
+                daysContainer.appendChild(dayDiv);
+            }
+            
+            // Seleciona o dia atual por padrão se estiver no mês corrente
+            if (month === new Date().getMonth()) {
+                selectDate(new Date().getDate(), month, year);
+            } else {
+                selectDate(1, month, year);
+            }
+        }
+
+        function changeMonth(direction) {
+            currentDate.setMonth(currentDate.getMonth() + direction);
+            renderCalendar();
+        }
+
+        function selectDate(day, month, year) {
+            selectedDate = new Date(year, month, day);
+            const dateString = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            const displayDate = `${day}/${String(month + 1).padStart(2, '0')}/${year}`;
+            
+            document.getElementById('selected-date-display').innerHTML = `Eventos em <span class="text-accent">${displayDate}</span>:`;
+            
+            const events = calendarEvents.filter(e => e.date === dateString);
+            const list = document.getElementById('day-events-list');
+            list.innerHTML = "";
+            
+            if (events.length === 0) {
+                list.innerHTML = '<p class="text-xs text-white/70 italic">Nenhum evento agendado.</p>';
+            } else {
+                events.forEach(ev => {
+                    const el = document.createElement('div');
+                    el.className = 'bg-white/10 p-2 rounded text-sm flex justify-between items-center';
+                    el.innerHTML = `<span>${ev.title}</span> <span class="text-[10px] bg-accent px-1 rounded text-black font-bold">${ev.type}</span>`;
+                    list.appendChild(el);
+                });
+            }
+        }
+
+        function addNewEvent() {
+            const title = prompt("Digite o nome da Aula ou Prova:");
+            if (title) {
+                const year = selectedDate.getFullYear();
+                const month = selectedDate.getMonth();
+                const day = selectedDate.getDate();
+                const dateString = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                
+                calendarEvents.push({
+                    date: dateString,
+                    type: 'Agendado',
+                    title: title
+                });
+                
+                renderCalendar(); // Re-render para mostrar o pontinho
+                selectDate(day, month, year); // Atualiza a lista
+                showToast("Evento adicionado à agenda!", "success");
+            }
+        }
+
+
+        // --- FUNÇÕES DE UTILIDADE ---
+        
+        // ALTERAÇÃO 1: Toggle Password
+        window.togglePasswordVisibility = (inputId, btn) => {
+            const input = document.getElementById(inputId);
+            const icon = btn.querySelector('i');
+            if (input.type === "password") {
+                input.type = "text";
+                icon.classList.remove('fa-eye');
+                icon.classList.add('fa-eye-slash');
+            } else {
+                input.type = "password";
+                icon.classList.remove('fa-eye-slash');
+                icon.classList.add('fa-eye');
+            }
+        };
+
+        // ALTERAÇÃO 2: Máscara de Telefone
+        window.handlePhoneMask = (event) => {
+            let input = event.target;
+            let value = input.value.replace(/\D/g, ""); // Remove tudo que não é dígito
+            
+            // Limita a 11 dígitos (DDD + 9 digitos)
+            if (value.length > 11) value = value.slice(0, 11);
+
+            // Aplica a formatação
+            if (value.length > 10) {
+                // Formato Celular (9 dígitos): (XX) XXXXX-XXXX
+                value = value.replace(/^(\d{2})(\d{5})(\d{4}).*/, "($1) $2-$3");
+            } else if (value.length > 5) {
+                // Formato parcial enquanto digita
+                value = value.replace(/^(\d{2})(\d{4})(\d{0,4}).*/, "($1) $2-$3");
+            } else if (value.length > 2) {
+                // Apenas DDD
+                value = value.replace(/^(\d{2})(\d{0,5})/, "($1) $2");
+            } else {
+                // Apenas números iniciais
+                value = value.replace(/^(\d*)/, "($1");
+            }
+            
+            input.value = value;
+        };
 
         // --- Funções Globais ---
         function renderMentors(mentors) {
@@ -501,45 +715,29 @@
                  card.onclick = () => openMentorModal(mentor);
                  const ratingStars = '★'.repeat(Math.floor(mentor.rating)) + '☆'.repeat(5 - Math.floor(mentor.rating));
                  card.innerHTML = `
-                     <div class="flex-shrink-0 flex items-center justify-center sm:justify-start">
-                         <div class="profile-border">
-                             <img src="${mentor.photo}" alt="Foto" class="h-16 w-16 sm:h-20 sm:w-20 object-cover rounded-full bg-gray-200">
-                         </div>
-                     </div>
-                     <div class="flex-grow">
-                         <h2 class="text-xl font-bold text-gray-800">${mentor.name}</h2>
-                         <div class="flex items-center text-sm mt-1 mb-2">
-                             <span class="text-accent font-bold mr-1">${mentor.rating.toFixed(1)}</span>
-                             <span class="text-accent">${ratingStars}</span>
-                             <span class="text-gray-500 ml-2">(${mentor.reviews})</span>
-                         </div>
-                         <p class="text-sm text-gray-700 mb-1"><i class="fas fa-map-marker-alt text-primary mr-1"></i> ${mentor.city} (${mentor.proximity}km)</p>
-                         <p class="text-sm text-gray-700"><i class="fas fa-car text-primary mr-1"></i> ${mentor.car}</p>
-                     </div>
-                     <div class="flex-shrink-0 flex flex-col justify-center items-end">
-                         <button class="btn-primary text-white font-semibold py-2 px-4 rounded-full text-sm shadow-md">Ver Perfil</button>
-                     </div>
-                 `;
-                 container.appendChild(card);
+                      <div class="flex-shrink-0 flex items-center justify-center sm:justify-start">
+                          <div class="profile-border">
+                              <img src="${mentor.photo}" alt="Foto" class="h-16 w-16 sm:h-20 sm:w-20 object-cover rounded-full bg-gray-200">
+                          </div>
+                      </div>
+                      <div class="flex-grow">
+                          <h2 class="text-xl font-bold text-gray-800">${mentor.name}</h2>
+                          <div class="flex items-center text-sm mt-1 mb-2">
+                              <span class="text-accent font-bold mr-1">${mentor.rating.toFixed(1)}</span>
+                              <span class="text-accent">${ratingStars}</span>
+                              <span class="text-gray-500 ml-2">(${mentor.reviews})</span>
+                          </div>
+                          <p class="text-sm text-gray-700 mb-1"><i class="fas fa-map-marker-alt text-primary mr-1"></i> ${mentor.city} (${mentor.proximity}km)</p>
+                          <p class="text-sm text-gray-700"><i class="fas fa-car text-primary mr-1"></i> ${mentor.car}</p>
+                      </div>
+                      <div class="flex-shrink-0 flex flex-col justify-center items-end">
+                          <button class="btn-primary text-white font-semibold py-2 px-4 rounded-full text-sm shadow-md">Ver Perfil</button>
+                      </div>
+                  `;
+                  container.appendChild(card);
              });
          }
         
-        function renderExamResults(data) {
-            const container = document.getElementById('exam-results-container');
-            container.innerHTML = '';
-            let theoreticalHtml = `<h4 class="text-xl font-bold text-accent mb-3">Prova Teórica</h4>`;
-            data.theoretical.forEach(exam => {
-                const statusColor = exam.result === 'Aprovado' ? 'text-green-400' : 'text-red-500';
-                theoreticalHtml += `<div class="p-3 bg-white/10 rounded-lg shadow-inner flex justify-between items-center border-l-4 border-accent"><div><p class="font-semibold">Tentativa ${exam.attempt}</p></div><div class="font-bold ${statusColor}">${exam.result}</div></div>`;
-            });
-            let practicalHtml = `<h4 class="text-xl font-bold text-accent mb-3 mt-8">Prova Prática</h4>`;
-            data.practical.forEach(exam => {
-                const statusColor = exam.result === 'Aprovado' ? 'text-green-400' : 'text-red-500';
-                practicalHtml += `<div class="p-3 bg-white/10 rounded-lg shadow-inner border-l-4 ${exam.result === 'Aprovado' ? 'border-accent' : 'border-red-500'}"><div class="flex justify-between"><p class="font-semibold">Tentativa ${exam.attempt}</p><div class="${statusColor} font-bold">${exam.result}</div></div></div>`;
-            });
-            container.innerHTML = theoreticalHtml + practicalHtml;
-        }
-
         function renderStudentBookings(bookingData) {
             const list = document.getElementById('bookings-list');
             list.innerHTML = '';
@@ -611,7 +809,6 @@
                 if (isApproved) {
                     showToast(`Bem-vindo! Acesso liberado.`, 'success');
                     
-                    // --- RECUPERA NOME E ENDEREÇO DO LOCALSTORAGE ---
                     const userName = localStorage.getItem('apex_user_name_' + email);
                     const userLocation = JSON.parse(localStorage.getItem('apex_user_location_' + email) || 'null');
 
@@ -620,7 +817,6 @@
                         document.getElementById('profile-email').textContent = email;
                     }
 
-                    // --- ATUALIZA A CIDADE NO PERFIL ---
                     if (userLocation) {
                         document.getElementById('profile-location').innerHTML = `
                             <i class="fas fa-map-marker-alt mr-1"></i> ${userLocation.city}, ${userLocation.state}
@@ -652,7 +848,6 @@
             const email = document.getElementById('signup-email').value.toLowerCase();
             const phone = document.getElementById('signup-phone').value;
             const password = document.getElementById('signup-password').value;
-            // NOVOS CAMPOS
             const city = document.getElementById('signup-city').value;
             const state = document.getElementById('signup-state').value;
 
@@ -673,8 +868,8 @@
                 user_name: name,
                 user_email: email,
                 user_phone: phone || 'N/A',
-                user_city: city, // Enviando Cidade
-                user_state: state, // Enviando Estado
+                user_city: city, 
+                user_state: state, 
                 user_category: category,
                 title: `Novo Lead: ${name} - ${city}/${state}`,
                 name: name,
@@ -695,7 +890,6 @@
                     currentApproved.push(email);
                     localStorage.setItem('apex_approved_emails', JSON.stringify(currentApproved));
                     
-                    // --- SALVA O NOME E O ENDEREÇO PARA USO POSTERIOR ---
                     localStorage.setItem('apex_user_name_' + email, name);
                     localStorage.setItem('apex_user_location_' + email, JSON.stringify({ city: city, state: state }));
                 }
@@ -710,7 +904,12 @@
         
         function openChatbotModal() { document.getElementById('chatbot-modal').classList.remove('hidden'); document.getElementById('chatbot-form').addEventListener('submit', sendChatbotQuery); }
         function closeChatbotModal() { document.getElementById('chatbot-modal').classList.add('hidden'); document.getElementById('chatbot-form').removeEventListener('submit', sendChatbotQuery); }
-        function openUserProfileModal() { document.getElementById('user-profile-modal').classList.remove('hidden'); document.body.style.overflow = 'hidden'; renderExamResults(MOCK_EXAM_RESULTS); renderStudentBookings(MOCK_STUDENT_BOOKINGS); }
+        function openUserProfileModal() { 
+            document.getElementById('user-profile-modal').classList.remove('hidden'); 
+            document.body.style.overflow = 'hidden'; 
+            renderCalendar(); // Renderiza o calendário ao abrir
+            renderStudentBookings(MOCK_STUDENT_BOOKINGS); 
+        }
         function closeUserProfileModal() { document.getElementById('user-profile-modal').classList.add('hidden'); document.body.style.overflow = ''; }
         function openMentorModal(mentor) {
             document.getElementById('modal-mentor-name').textContent = mentor.name;
@@ -734,16 +933,16 @@
         
         function applyFilters() {
             const searchTerm = document.getElementById('search-term').value.toLowerCase();
-            const carFilter = document.getElementById('car-filter').value;
+            // ALTERAÇÃO 3: Filtro de Carro removido da lógica
             const genderFilter = document.getElementById('gender-filter').value;
             const categoryFilter = document.getElementById('category-filter').value; 
             const sortBy = document.getElementById('sort-by').value;
+            
             let filteredMentors = mentorsData.filter(mentor => {
                 const searchMatch = mentor.name.toLowerCase().includes(searchTerm) || mentor.city.toLowerCase().includes(searchTerm) || mentor.car.toLowerCase().includes(searchTerm);
-                const carMatch = carFilter === '' || mentor.car === carFilter;
                 const genderMatch = genderFilter === '' || mentor.gender === genderFilter;
-                const categoryMatch = categoryFilter === '' || mentor.cnhCategory.includes(categoryFilter);
-                return searchMatch && carMatch && genderMatch && categoryMatch; 
+                const categoryMatch = categoryFilter === '' || mentor.cnhCategory.includes(categoryFilter); 
+                return searchMatch && genderMatch && categoryMatch; 
             });
             if (sortBy === 'rating') filteredMentors.sort((a, b) => b.rating - a.rating);
             else if (sortBy === 'proximity') filteredMentors.sort((a, b) => b.proximity - a.proximity);
@@ -760,7 +959,6 @@
             document.getElementById('signup-form').addEventListener('submit', handleSignUp);
             if (document.getElementById('search-term')) {
                 document.getElementById('search-term').addEventListener('input', applyFilters);
-                document.getElementById('car-filter').addEventListener('change', applyFilters);
                 document.getElementById('gender-filter').addEventListener('change', applyFilters);
                 document.getElementById('category-filter').addEventListener('change', applyFilters); 
                 document.getElementById('sort-by').addEventListener('change', applyFilters);
