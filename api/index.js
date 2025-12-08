@@ -1,6 +1,6 @@
 const leadController = require('../src/controllers/leadController');
 
-// Função para ler o body (pois sem Express não há req.body automaticamente)
+// Função para ler body JSON manualmente
 const parseBody = (req) =>
   new Promise((resolve) => {
     let body = "";
@@ -8,21 +8,21 @@ const parseBody = (req) =>
     req.on("end", () => resolve(body ? JSON.parse(body) : {}));
   });
 
-// Handler Serverless (Vercel)
+// Handler Serverless
 module.exports = async (req, res) => {
 
   // POST - Criar lead
-  if (req.method === "POST" && req.url === "/api/leads") {
+  if (req.method === "POST" && req.url === "/leads") {
     req.body = await parseBody(req);
     return leadController.create(req, res);
   }
 
   // GET - Listar leads
-  if (req.method === "GET" && req.url === "/api/leads") {
+  if (req.method === "GET" && req.url === "/leads") {
     return leadController.list(req, res);
   }
 
-  // GET raiz - teste rápido
+  // Teste raiz
   if (req.method === "GET" && req.url === "/") {
     return res.status(200).json({
       status: "online",
@@ -30,6 +30,6 @@ module.exports = async (req, res) => {
     });
   }
 
-  // Se não bater com nada
+  // Se não for nenhuma
   return res.status(404).json({ error: "Rota não encontrada" });
 };
