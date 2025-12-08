@@ -2,10 +2,10 @@ const leadService = require('../services/leadService');
 
 const leadController = {
     
-    // POST /api/leads
     create: async (req, res) => {
         try {
             console.log("📥 Recebendo payload:", req.body);
+
             const lead = await leadService.createLead(req.body);
             
             return res.status(201).json({
@@ -22,7 +22,6 @@ const leadController = {
         }
     },
 
-    // GET /api/leads
     list: async (req, res) => {
         try {
             const leads = await leadService.getAllLeads();
