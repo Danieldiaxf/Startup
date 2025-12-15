@@ -41,39 +41,25 @@
         let isAdmin = false; 
         let properties = [];
 
-        // =================================================================================
-        // SEGURANÇA DO ADMIN (HASH SHA-256)
-        // =================================================================================
-        // Este hash corresponde a "admin@primehouse.com". 
-        // O e-mail original não existe mais no código fonte.
-        const ADMIN_HASH = "ef10115e378351daec1941e786b5936853765e94b75a1378122c60170a726671";
-
-        // Função para converter texto em Hash SHA-256
-        async function digestMessage(message) {
-            if (!message) return "";
-            const msgBuffer = new TextEncoder().encode(message);
-            const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
-            const hashArray = Array.from(new Uint8Array(hashBuffer));
-            const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-            return hashHex;
-        }
-        // =================================================================================
+        // SEGURANÇA: Email mascarado em Base64
+        // O valor abaixo é a representação codificada de "admin@primehouse.com"
+        // Para gerar um novo código para outro email, abra o console do navegador e digite: btoa('seuemail@exemplo.com')
+        const ADMIN_HASH = "YWRtaW5AcHJpbWVob3VzZS5jb20="; 
 
         // Auth Init
         // Tenta manter uma sessão anônima ativa para visitantes se não houver usuário logado
-        onAuthStateChanged(auth, async (user) => {
+        onAuthStateChanged(auth, (user) => {
             currentUser = user;
             
             if (user) {
-                // VERIFICAÇÃO SEGURA: Compara o hash do e-mail logado com o hash permitido
-                // Se user.email for "admin@primehouse.com", o hash gerado será idêntico ao ADMIN_HASH
-                const userEmailHash = await digestMessage(user.email);
-                isAdmin = userEmailHash === ADMIN_HASH;
-
-                if(isAdmin) {
+                // VERIFICAÇÃO DE SEGURANÇA MASCARADA
+                // Pega o email do usuário logado, converte para Base64 e compara com o Hash
+                if(user.email && btoa(user.email) === ADMIN_HASH) {
+                    isAdmin = true;
                     document.body.classList.add('is-admin');
                     showToast("Modo Administrador Ativo", "success");
                 } else {
+                    isAdmin = false;
                     document.body.classList.remove('is-admin');
                 }
                 
@@ -114,7 +100,7 @@
             });
         }
 
-        // --- NOVA LÓGICA DE UPLOAD (COMPRESSÃO BASE64) ---
+        // --- LÓGICA DE UPLOAD (COMPRESSÃO BASE64) ---
         
         function compressImage(file) {
             return new Promise((resolve, reject) => {
@@ -911,7 +897,7 @@
                     // Nota: com base64, a URL pode ser muito longa, então apenas abrimos se o navegador suportar.
                     // Para melhorar a UX, ao clicar, podemos mostrar a imagem no modal principal
                     imgContainer.onclick = () => {
-                          document.getElementById('modal-image').src = imgUrl;
+                         document.getElementById('modal-image').src = imgUrl;
                     };
                     
                     const img = document.createElement('img');
