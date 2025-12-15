@@ -13,10 +13,9 @@
 
     <!-- Firebase SDKs -->
     <script type="module">
-        // NOTA: Removemos o 'firebase-storage' para evitar erros de CORS/Permissão.
-        // Agora usamos compressão Base64 direta no Firestore.
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
+        // Adicionamos signInWithEmailAndPassword e signOut
+        import { getAuth, signInAnonymously, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
         import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
 
         // =================================================================================
@@ -43,15 +42,32 @@
         let isAdmin = false; 
         let properties = [];
 
-        // Auth Init
-        signInAnonymously(auth).catch((error) => {
-            console.error("Erro auth anônima:", error);
-        });
+        // --- SEGURANÇA: DEFINE QUEM É O ADMIN ---
+        // Isso é usado apenas para controle de UI. A segurança real vem das Regras do Firestore.
+        // Você deve criar este usuário no painel "Authentication" do Firebase.
+        const ADMIN_EMAIL = "admin@primehouse.com"; 
 
+        // Auth Init
+        // Tenta manter uma sessão anônima ativa para visitantes se não houver usuário logado
         onAuthStateChanged(auth, (user) => {
             currentUser = user;
+            
             if (user) {
+                // Verifica se o usuário logado é o admin pelo email
+                isAdmin = user.email === ADMIN_EMAIL;
+                if(isAdmin) {
+                    document.body.classList.add('is-admin');
+                    showToast("Modo Administrador Ativo", "success");
+                } else {
+                    document.body.classList.remove('is-admin');
+                }
+                
+                // Inicia o app (listeners do banco de dados)
                 initApp();
+                updateAdminUI();
+            } else {
+                // Se não houver usuário (ex: logo após logout), entra como anônimo para o visitante ver o site
+                signInAnonymously(auth).catch((error) => console.error("Erro auth anônima:", error));
             }
         });
 
@@ -64,6 +80,7 @@
 
         // Ler (Read)
         function initApp() {
+            // Evita criar múltiplos listeners
             const q = query(getCollectionRef()); 
             
             onSnapshot(q, (snapshot) => {
@@ -76,13 +93,13 @@
             }, (error) => {
                 console.error("Erro ao buscar dados:", error);
                 if (error.code === 'permission-denied') {
-                   console.log("Aguardando permissões ou autenticação...");
+                   // Isso acontecerá se as regras de segurança bloquearem a leitura
+                   console.log("Permissão negada. Verifique as regras do Firestore.");
                 }
             });
         }
 
         // --- NOVA LÓGICA DE UPLOAD (COMPRESSÃO BASE64) ---
-        // Isso resolve o problema de CORS evitando o uso do Storage Bucket
         
         function compressImage(file) {
             return new Promise((resolve, reject) => {
@@ -124,6 +141,12 @@
         window.handleAdminSubmit = async (event) => {
             event.preventDefault();
             
+            // Verificação extra de segurança no front-end
+            if (!isAdmin) {
+                showToast("Acesso negado: Você não é administrador.", "error");
+                return;
+            }
+
             const submitBtn = event.target.querySelector('button[type="submit"]');
             const originalBtnText = submitBtn.textContent;
             submitBtn.disabled = true;
@@ -154,13 +177,10 @@
 
                 if (galleryFiles.length > 0) {
                     submitBtn.textContent = `Otimizando galeria (${galleryFiles.length} fotos)...`;
-                    
-                    // Processa em paralelo
                     const processPromises = Array.from(galleryFiles).map(file => compressImage(file));
                     newGalleryUrls = await Promise.all(processPromises);
                 }
 
-                // Recupera galeria existente se estiver editando
                 let existingGallery = [];
                 if (id) {
                     const currentProp = properties.find(p => p.id === id);
@@ -171,7 +191,6 @@
 
                 const finalGallery = [...existingGallery, ...newGalleryUrls];
 
-                // 3. Prepara os dados
                 const data = {
                     title: formData.get('title'),
                     location: formData.get('location'),
@@ -181,13 +200,14 @@
                     baths: Number(formData.get('baths')),
                     garages: Number(formData.get('garages') || 0),
                     area: Number(formData.get('area')),
-                    image: mainImageUrl, // Agora é uma string Base64 longa
+                    image: mainImageUrl,
                     gallery: finalGallery,
                     description: formData.get('description'),
-                    featured: formData.get('featured') === 'on'
+                    featured: formData.get('featured') === 'on',
+                    updatedAt: new Date(), // Bom para auditoria
+                    updatedBy: auth.currentUser.email // Auditoria
                 };
 
-                // 4. Salva no Firestore
                 submitBtn.textContent = "Salvando no banco...";
                 if (id) {
                     const docRef = doc(db, 'imoveis', id);
@@ -202,8 +222,9 @@
 
             } catch (e) {
                 console.error("Erro no processo:", e);
-                // Erro comum: Documento muito grande
-                if (e.message && e.message.includes("exceeds the maximum size")) {
+                if (e.code === 'permission-denied') {
+                    showToast("ERRO DE PERMISSÃO: Sua conta não tem autorização para gravar dados.", "error");
+                } else if (e.message && e.message.includes("exceeds the maximum size")) {
                     showToast("Erro: Muitas fotos. O tamanho máximo foi excedido.", "error");
                 } else {
                     showToast(e.message || "Erro ao salvar.", "error");
@@ -216,6 +237,10 @@
 
         // Deletar (Delete)
         window.deletePropertyFromDb = async (id) => {
+            if(!isAdmin) {
+                showToast("Acesso negado.", "error");
+                return;
+            }
             if(!confirm("Tem certeza que deseja excluir este imóvel?")) return;
             try {
                 const docRef = doc(db, 'imoveis', id);
@@ -223,12 +248,17 @@
                 showToast("Imóvel removido.", "success");
             } catch (e) {
                 console.error("Erro ao deletar", e);
-                showToast("Erro ao deletar.", "error");
+                if (e.code === 'permission-denied') {
+                    showToast("ERRO: Somente o Administrador pode excluir.", "error");
+                } else {
+                    showToast("Erro ao deletar.", "error");
+                }
             }
         };
 
-        // Função para limpar galeria (Reset simples para facilitar manutenção)
+        // Limpar Galeria
         window.clearGallery = async (id) => {
+            if(!isAdmin) return;
             if(!confirm("Isso removerá todas as fotos da galeria deste imóvel. Confirmar?")) return;
             try {
                 const docRef = doc(db, 'imoveis', id);
@@ -239,9 +269,53 @@
             }
         }
 
+        // LOGIN SEGURO COM FIREBASE AUTH
+        window.handleLogin = async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('login-email').value;
+            const pass = document.getElementById('login-password').value;
+            const btn = e.target.querySelector('button');
+            
+            try {
+                btn.textContent = "Verificando...";
+                btn.disabled = true;
+                
+                // Autenticação Real no Servidor
+                await signInWithEmailAndPassword(auth, email, pass);
+                
+                // O resto é tratado no onAuthStateChanged
+                toggleModal('login-modal', false);
+                // Reset form
+                e.target.reset();
+                
+            } catch (error) {
+                console.error("Erro login:", error);
+                if(error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password') {
+                    showToast("Email ou senha incorretos.", "error");
+                } else {
+                    showToast("Erro ao entrar: " + error.message, "error");
+                }
+            } finally {
+                btn.textContent = "Entrar";
+                btn.disabled = false;
+            }
+        }
+
+        window.handleLogout = async () => {
+            try {
+                await signOut(auth);
+                // Ao sair, o onAuthStateChanged vai disparar e logar como anônimo automaticamente
+                isAdmin = false;
+                updateAdminUI();
+                toggleModal('admin-panel-modal', false);
+                showToast("Logout realizado.");
+            } catch (error) {
+                console.error("Erro logout", error);
+            }
+        }
+
         // Exportar para uso no HTML
         window.isAdminUser = () => isAdmin;
-        window.setAdminStatus = (status) => { isAdmin = status; renderProperties(); updateAdminUI(); };
         window.getProperties = () => properties;
         
     </script>
@@ -456,17 +530,21 @@
         </div>
     </footer>
 
-    <!-- MODAL: LOGIN -->
+    <!-- MODAL: LOGIN (AGORA COM EMAIL/SENHA) -->
     <div id="login-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in">
         <div class="bg-white rounded-xl w-full max-w-sm p-8 shadow-2xl relative">
             <button onclick="toggleModal('login-modal', false)" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600"><i data-lucide="x" width="20"></i></button>
             <h3 class="text-2xl font-bold text-slate-900 mb-2">Área Restrita</h3>
             <p class="text-slate-500 mb-6 text-sm">Acesso exclusivo para corretores.</p>
             
-            <form onsubmit="handleLogin(event)" class="space-y-4">
+            <form onsubmit="window.handleLogin(event)" class="space-y-4">
                 <div>
-                    <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Senha de Acesso</label>
-                    <input type="password" id="login-password" placeholder="Senha do admin" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors">
+                    <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Email</label>
+                    <input type="email" id="login-email" placeholder="admin@primehouse.com" required class="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Senha</label>
+                    <input type="password" id="login-password" placeholder="Sua senha segura" required class="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors">
                 </div>
                 <button type="submit" class="w-full bg-blue-900 hover:bg-blue-800 text-white font-bold py-3 rounded-lg transition-colors">Entrar</button>
             </form>
@@ -573,7 +651,7 @@
             <!-- Logout -->
             <div class="p-4 border-t border-slate-200 bg-white rounded-b-xl flex justify-between items-center">
                 <span class="text-xs text-slate-500">Logado como Admin</span>
-                <button onclick="handleLogout()" class="text-red-500 hover:text-red-700 text-sm font-medium">Sair</button>
+                <button onclick="window.handleLogout()" class="text-red-500 hover:text-red-700 text-sm font-medium">Sair</button>
             </div>
         </div>
     </div>
@@ -850,28 +928,6 @@
             } else {
                 toggleModal('login-modal', true);
             }
-        }
-
-        function handleLogin(e) {
-            e.preventDefault();
-            const pass = document.getElementById('login-password').value;
-            // Senha: @dmin#P@D@
-            if (btoa(pass) === 'QGRtaW4jUEBEQA==') {
-                window.setAdminStatus(true);
-                toggleModal('login-modal', false);
-                showToast("Bem-vindo, Admin!", "success");
-                document.body.classList.add('is-admin');
-                openAdminPanel();
-            } else {
-                showToast("Senha incorreta.", "error");
-            }
-        }
-
-        function handleLogout() {
-            window.setAdminStatus(false);
-            document.body.classList.remove('is-admin');
-            toggleModal('admin-panel-modal', false);
-            showToast("Logout realizado.");
         }
 
         function updateAdminUI() {
