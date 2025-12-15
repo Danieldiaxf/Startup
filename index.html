@@ -11,11 +11,13 @@
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
 
-    <!-- Firebase SDKs (Versão Compatível com Módulos) -->
+    <!-- Firebase SDKs -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
         import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
+        // NOVO IMPORT: Storage
+        import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-storage.js";
 
         // =================================================================================
         // SUAS CONFIGURAÇÕES DO FIREBASE
@@ -35,16 +37,16 @@
         const app = initializeApp(myManualConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
+        const storage = getStorage(app); // Inicializa Storage
 
         // Estado Global
         let currentUser = null;
         let isAdmin = false; 
         let properties = [];
 
-        // Auth Init - Tenta logar anonimamente para permitir leitura
+        // Auth Init
         signInAnonymously(auth).catch((error) => {
             console.error("Erro auth anônima:", error);
-            // Se der erro aqui, certifique-se que ativou "Anonymous Auth" no console
         });
 
         onAuthStateChanged(auth, (user) => {
@@ -56,13 +58,12 @@
 
         // Referência da Coleção
         function getCollectionRef() {
-            // Usando uma coleção simples na raiz para seu projeto pessoal
             return collection(db, 'imoveis');
         }
 
         // --- FUNÇÕES DE BANCO DE DADOS (CRUD) ---
 
-        // Ler (Read) - Escuta em tempo real
+        // Ler (Read)
         function initApp() {
             const q = query(getCollectionRef()); 
             
@@ -81,28 +82,72 @@
             });
         }
 
-        // Criar (Create)
-        window.addPropertyToDb = async (data) => {
-            try {
-                await addDoc(getCollectionRef(), data);
-                showToast("Imóvel adicionado com sucesso!", "success");
-                toggleModal('admin-modal', false);
-            } catch (e) {
-                console.error("Erro ao adicionar", e);
-                showToast("Erro ao salvar. Verifique se o login Anônimo está ativado no Firebase.", "error");
-            }
-        };
+        // --- LÓGICA DE UPLOAD E SALVAMENTO ---
+        
+        // Exporta função para ser chamada pelo HTML
+        window.handleAdminSubmit = async (event) => {
+            event.preventDefault();
+            
+            const submitBtn = event.target.querySelector('button[type="submit"]');
+            const originalBtnText = submitBtn.textContent;
+            submitBtn.disabled = true;
+            submitBtn.textContent = "Processando...";
 
-        // Atualizar (Update)
-        window.updatePropertyInDb = async (id, data) => {
             try {
-                const docRef = doc(db, 'imoveis', id);
-                await updateDoc(docRef, data);
-                showToast("Imóvel atualizado!", "success");
+                const formData = new FormData(event.target);
+                const fileInput = document.getElementById('image-file-input');
+                const file = fileInput.files[0];
+                let imageUrl = document.getElementById('image-url-input').value;
+
+                // 1. Se houver arquivo novo, faz o upload
+                if (file) {
+                    submitBtn.textContent = "Enviando imagem...";
+                    // Cria uma referência única para o arquivo: imoveis/TIMESTAMP_NOME
+                    const storageRef = ref(storage, `imoveis/${Date.now()}_${file.name}`);
+                    const snapshot = await uploadBytes(storageRef, file);
+                    imageUrl = await getDownloadURL(snapshot.ref);
+                }
+
+                // Validação simples
+                if (!imageUrl) {
+                    throw new Error("É necessário enviar uma imagem ou manter a existente.");
+                }
+
+                // 2. Prepara os dados
+                const data = {
+                    title: formData.get('title'),
+                    location: formData.get('location'),
+                    price: Number(formData.get('price')),
+                    type: formData.get('type'),
+                    beds: Number(formData.get('beds')),
+                    baths: Number(formData.get('baths')),
+                    area: Number(formData.get('area')),
+                    image: imageUrl, // Usa a URL (nova ou antiga)
+                    description: formData.get('description'),
+                    featured: formData.get('featured') === 'on'
+                };
+
+                const id = document.getElementById('edit-id').value;
+
+                // 3. Salva no Firestore
+                submitBtn.textContent = "Salvando dados...";
+                if (id) {
+                    const docRef = doc(db, 'imoveis', id);
+                    await updateDoc(docRef, data);
+                    showToast("Imóvel atualizado!", "success");
+                } else {
+                    await addDoc(getCollectionRef(), data);
+                    showToast("Imóvel criado com sucesso!", "success");
+                }
+
                 toggleModal('admin-modal', false);
+
             } catch (e) {
-                console.error("Erro ao atualizar", e);
-                showToast("Erro ao atualizar.", "error");
+                console.error("Erro no processo:", e);
+                showToast(e.message || "Erro ao salvar.", "error");
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = originalBtnText;
             }
         };
 
@@ -172,7 +217,7 @@
                     <i data-lucide="settings" width="16"></i> Painel
                 </button>
 
-                <!-- BOTÃO CONTATO (NAVBAR) - Link Atualizado -->
+                <!-- BOTÃO CONTATO (NAVBAR) -->
                 <a href="https://w.app/primehouse" target="_blank" class="bg-amber-500 hover:bg-amber-600 text-white px-5 py-2 rounded-lg font-semibold transition-colors flex items-center gap-2">
                     <i data-lucide="message-circle" width="18" height="18"></i>
                     Contato
@@ -192,7 +237,7 @@
             <a href="#sobre" class="text-lg font-medium text-slate-700 mobile-link">Sobre Nós</a>
             <button onclick="openLoginModal()" class="text-left text-lg font-medium text-slate-500 mobile-link">Área do Corretor</button>
             
-            <!-- BOTÃO WHATSAPP (MOBILE) - Link Atualizado -->
+            <!-- BOTÃO WHATSAPP (MOBILE) -->
             <a href="https://w.app/primehouse" target="_blank" class="bg-green-500 text-white w-full py-3 rounded-lg font-bold flex justify-center items-center gap-2">
                 <i data-lucide="message-circle" width="20" height="20"></i>
                 WhatsApp
@@ -279,7 +324,7 @@
                     <li class="flex items-center gap-3"><i data-lucide="check-circle" class="text-amber-400" width="20"></i> <span>Assessoria jurídica completa</span></li>
                 </ul>
                 
-                <!-- BOTÃO ANUNCIAR - Link Atualizado -->
+                <!-- BOTÃO ANUNCIAR -->
                 <a href="https://w.app/primehouse" target="_blank" class="bg-white text-blue-900 px-8 py-3 rounded-lg font-bold hover:bg-slate-100 transition-colors inline-flex items-center gap-2">
                     Anunciar meu Imóvel <i data-lucide="arrow-right" width="20"></i>
                 </a>
@@ -326,7 +371,7 @@
         </div>
     </footer>
 
-    <!-- MODAL: LOGIN (SIMULADO PARA ACESSO) -->
+    <!-- MODAL: LOGIN -->
     <div id="login-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in">
         <div class="bg-white rounded-xl w-full max-w-sm p-8 shadow-2xl relative">
             <button onclick="toggleModal('login-modal', false)" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600"><i data-lucide="x" width="20"></i></button>
@@ -359,8 +404,8 @@
             <div class="md:w-1/2 p-8 flex flex-col">
                 <div class="mb-6">
                     <div class="flex gap-2 mb-3">
-                       <span id="modal-badge" class="px-2 py-1 text-xs font-bold uppercase tracking-wide rounded"></span>
-                       <span class="text-slate-400 text-sm flex items-center gap-1"><i data-lucide="map-pin" width="14"></i> <span id="modal-location"></span></span>
+                        <span id="modal-badge" class="px-2 py-1 text-xs font-bold uppercase tracking-wide rounded"></span>
+                        <span class="text-slate-400 text-sm flex items-center gap-1"><i data-lucide="map-pin" width="14"></i> <span id="modal-location"></span></span>
                     </div>
                     <h2 id="modal-title" class="text-2xl font-bold text-slate-900 mb-2"></h2>
                     <p id="modal-description" class="text-slate-600 leading-relaxed text-sm"></p>
@@ -379,7 +424,7 @@
                         <span id="modal-area" class="font-bold text-slate-800"></span>
                     </div>
                 </div>
-                <!-- BOTÃO AGENDAR (MODAL) - Link Atualizado -->
+                <!-- BOTÃO AGENDAR (MODAL) -->
                 <a href="https://w.app/primehouse" target="_blank" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2 transition-colors">
                     <i data-lucide="message-circle" width="20"></i> WhatsApp
                 </a>
@@ -432,7 +477,7 @@
             <button onclick="toggleModal('admin-modal', false)" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600"><i data-lucide="x" width="20"></i></button>
             <h3 id="form-title" class="text-xl font-bold text-slate-900 mb-6">Novo Imóvel</h3>
             
-            <form id="property-form" onsubmit="handleFormSubmit(event)" class="space-y-4">
+            <form id="property-form" onsubmit="window.handleAdminSubmit(event)" class="space-y-4">
                 <input type="hidden" id="edit-id">
                 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -481,10 +526,23 @@
                     </div>
                 </div>
 
+                <!-- CAMPO DE IMAGEM ALTERADO -->
                 <div>
-                    <label class="label-text">URL da Imagem</label>
-                    <input type="url" name="image" required class="input-field" placeholder="https://...">
-                    <p class="text-xs text-slate-400 mt-1">Use links do Unsplash ou hospedagem pública.</p>
+                    <label class="label-text">Imagem do Imóvel</label>
+                    <!-- Campo oculto para armazenar URL existente ao editar -->
+                    <input type="hidden" name="image" id="image-url-input">
+                    
+                    <!-- Input de Arquivo -->
+                    <input type="file" id="image-file-input" accept="image/*" class="input-field block w-full text-sm text-slate-500
+                      file:mr-4 file:py-2 file:px-4
+                      file:rounded-full file:border-0
+                      file:text-sm file:font-semibold
+                      file:bg-blue-50 file:text-blue-700
+                      hover:file:bg-blue-100 mb-1 cursor-pointer
+                    "/>
+                    
+                    <!-- Feedback visual de edição -->
+                    <div id="image-preview-status" class="text-xs text-slate-500 h-5 flex items-center gap-2"></div>
                 </div>
 
                 <div>
@@ -493,7 +551,7 @@
                 </div>
 
                 <div class="pt-4">
-                    <button type="submit" class="w-full bg-blue-900 hover:bg-blue-800 text-white font-bold py-3 rounded-lg transition-colors">Salvar Imóvel</button>
+                    <button type="submit" class="w-full bg-blue-900 hover:bg-blue-800 text-white font-bold py-3 rounded-lg transition-colors disabled:bg-slate-400">Salvar Imóvel</button>
                 </div>
             </form>
         </div>
@@ -631,7 +689,6 @@
             const pass = document.getElementById('login-password').value;
             // Validação de senha mascarada (Base64)
             // Senha real: @dmin#P@D@
-            // Base64: QGRtaW4jUEBEQA==
             if (btoa(pass) === 'QGRtaW4jUEBEQA==') {
                 window.setAdminStatus(true);
                 toggleModal('login-modal', false);
@@ -705,41 +762,26 @@
                 form.elements['beds'].value = p.beds;
                 form.elements['baths'].value = p.baths;
                 form.elements['area'].value = p.area;
-                form.elements['image'].value = p.image;
+                
+                // CAMPO IMAGEM (LÓGICA ESPECIAL PARA INPUT FILE)
+                document.getElementById('image-url-input').value = p.image;
+                document.getElementById('image-preview-status').innerHTML = `Imagem atual: <a href="${p.image}" target="_blank" class="text-blue-600 hover:underline">Ver link</a>`;
+                document.getElementById('image-file-input').value = ""; // Limpa input de arquivo
+
                 form.elements['description'].value = p.description;
                 form.elements['featured'].checked = p.featured;
             } else {
                 // Create Mode
                 document.getElementById('edit-id').value = "";
                 title.textContent = "Novo Imóvel";
+                
+                document.getElementById('image-url-input').value = "";
+                document.getElementById('image-preview-status').innerHTML = "";
+                document.getElementById('image-file-input').value = "";
+                
                 form.reset();
             }
             toggleModal('admin-modal', true);
-        }
-
-        function handleFormSubmit(e) {
-            e.preventDefault();
-            const formData = new FormData(e.target);
-            const data = {
-                title: formData.get('title'),
-                location: formData.get('location'),
-                price: Number(formData.get('price')),
-                type: formData.get('type'),
-                beds: Number(formData.get('beds')),
-                baths: Number(formData.get('baths')),
-                area: Number(formData.get('area')),
-                image: formData.get('image'),
-                description: formData.get('description'),
-                featured: formData.get('featured') === 'on'
-            };
-
-            const id = document.getElementById('edit-id').value;
-            
-            if (id) {
-                window.updatePropertyInDb(id, data);
-            } else {
-                window.addPropertyToDb(data);
-            }
         }
 
         // Listeners básicos
