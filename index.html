@@ -11,13 +11,13 @@
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
 
-    <!-- Firebase SDKs (Versão Estável) -->
+    <!-- Firebase SDKs -->
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore.js";
-        // Voltando para uploadBytes para arquivos comprimidos (menos overhead de rede)
-        import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-storage.js";
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
+        import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
+        // NOVO IMPORT: Storage
+        import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-storage.js";
 
         // =================================================================================
         // SUAS CONFIGURAÇÕES DO FIREBASE
@@ -37,159 +37,83 @@
         const app = initializeApp(myManualConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
-        const storage = getStorage(app);
+        const storage = getStorage(app); // Inicializa Storage
 
         // Estado Global
         let currentUser = null;
         let isAdmin = false; 
         let properties = [];
-        let currentGalleryImages = [];
-        let currentGalleryIndex = 0;
 
         // Auth Init
-        async function ensureAuth() {
-            if (!auth.currentUser) {
-                try { await signInAnonymously(auth); } catch (e) { console.error("Auth falhou", e); }
-            }
-        }
+        signInAnonymously(auth).catch((error) => {
+            console.error("Erro auth anônima:", error);
+        });
 
         onAuthStateChanged(auth, (user) => {
             currentUser = user;
-            if (user) initApp();
+            if (user) {
+                initApp();
+            }
         });
-        
-        ensureAuth();
 
-        function getCollectionRef() { return collection(db, 'imoveis'); }
+        // Referência da Coleção
+        function getCollectionRef() {
+            return collection(db, 'imoveis');
+        }
 
+        // --- FUNÇÕES DE BANCO DE DADOS (CRUD) ---
+
+        // Ler (Read)
         function initApp() {
             const q = query(getCollectionRef()); 
+            
             onSnapshot(q, (snapshot) => {
-                properties = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                properties = snapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data()
+                }));
                 renderProperties();
                 updateAdminList(); 
+            }, (error) => {
+                console.error("Erro ao buscar dados:", error);
+                if (error.code === 'permission-denied') {
+                   console.log("Aguardando permissões ou autenticação...");
+                }
             });
         }
 
-        // --- NOVO: FUNÇÃO DE COMPRESSÃO DE IMAGEM ---
-        // OTIMIZADO PARA VELOCIDADE MÁXIMA (Max 1024px / 60% Qualidade)
-        const compressImage = async (file) => {
-            return new Promise((resolve, reject) => {
-                const maxWidth = 1024; // Reduzido para 1024px para upload instantâneo
-                const quality = 0.6;   // 60% qualidade (muito leve)
-                
-                const reader = new FileReader();
-                reader.readAsDataURL(file);
-                reader.onload = (event) => {
-                    const img = new Image();
-                    img.src = event.target.result;
-                    img.onload = () => {
-                        const canvas = document.createElement('canvas');
-                        let width = img.width;
-                        let height = img.height;
-
-                        // Redimensiona mantendo proporção
-                        if (width > maxWidth) {
-                            height = Math.round((height * maxWidth) / width);
-                            width = maxWidth;
-                        }
-
-                        canvas.width = width;
-                        canvas.height = height;
-                        const ctx = canvas.getContext('2d');
-                        ctx.drawImage(img, 0, 0, width, height);
-
-                        // Converte para Blob JPEG comprimido
-                        canvas.toBlob((blob) => {
-                            if (!blob) {
-                                reject(new Error('Falha na compressão'));
-                                return;
-                            }
-                            // Retorna como arquivo pronto para upload
-                            const newFile = new File([blob], file.name.replace(/\.[^/.]+$/, "") + ".jpg", {
-                                type: 'image/jpeg',
-                                lastModified: Date.now(),
-                            });
-                            resolve(newFile);
-                        }, 'image/jpeg', quality);
-                    };
-                    img.onerror = (error) => reject(error);
-                };
-                reader.onerror = (error) => reject(error);
-            });
-        };
-
-        const sanitizeFileName = (name) => name.replace(/[^a-z0-9.]/gi, '_').toLowerCase();
-
-        // Upload Rápido (Comprime -> Envia)
-        const uploadFast = async (file, path) => {
-            try {
-                // 1. Comprime
-                const compressedFile = await compressImage(file);
-                
-                // 2. Envia (Upload Simples é mais rápido para arquivos pequenos)
-                const storageRef = ref(storage, path);
-                const snapshot = await uploadBytes(storageRef, compressedFile);
-                return await getDownloadURL(snapshot.ref);
-            } catch (error) {
-                console.error("Erro no upload fast:", error);
-                throw error;
-            }
-        };
+        // --- LÓGICA DE UPLOAD E SALVAMENTO ---
         
+        // Exporta função para ser chamada pelo HTML
         window.handleAdminSubmit = async (event) => {
             event.preventDefault();
+            
             const submitBtn = event.target.querySelector('button[type="submit"]');
             const originalBtnText = submitBtn.textContent;
             submitBtn.disabled = true;
-            submitBtn.textContent = "Iniciando...";
+            submitBtn.textContent = "Processando...";
 
             try {
-                await ensureAuth();
-                if (!auth.currentUser) throw new Error("Erro de autenticação.");
-
                 const formData = new FormData(event.target);
-                
-                // 1. Capa
-                const coverInput = document.getElementById('image-file-input');
-                const coverFile = coverInput.files[0];
-                let coverUrl = document.getElementById('image-url-input').value;
+                const fileInput = document.getElementById('image-file-input');
+                const file = fileInput.files[0];
+                let imageUrl = document.getElementById('image-url-input').value;
 
-                if (coverFile) {
-                    submitBtn.textContent = "Processando capa...";
-                    const fileName = `${Date.now()}_cover.jpg`;
-                    coverUrl = await uploadFast(coverFile, `imoveis/${fileName}`);
+                // 1. Se houver arquivo novo, faz o upload
+                if (file) {
+                    submitBtn.textContent = "Enviando imagem...";
+                    // Cria uma referência única para o arquivo: imoveis/TIMESTAMP_NOME
+                    const storageRef = ref(storage, `imoveis/${Date.now()}_${file.name}`);
+                    const snapshot = await uploadBytes(storageRef, file);
+                    imageUrl = await getDownloadURL(snapshot.ref);
                 }
 
-                if (!coverUrl) throw new Error("Capa obrigatória.");
-
-                // 2. Galeria
-                const galleryInput = document.getElementById('gallery-files-input');
-                let galleryUrls = [];
-                try {
-                    const existingGalleryJson = document.getElementById('gallery-urls-input').value;
-                    if (existingGalleryJson) galleryUrls = JSON.parse(existingGalleryJson);
-                } catch(e) {}
-
-                if (galleryInput.files.length > 0) {
-                    submitBtn.textContent = `Enviando ${galleryInput.files.length} fotos (Rápido)...`;
-                    
-                    // Processa tudo em paralelo
-                    const uploadPromises = Array.from(galleryInput.files).map((file, i) => {
-                        const fileName = `${Date.now()}_gallery_${i}.jpg`;
-                        return uploadFast(file, `imoveis/gallery/${fileName}`)
-                            .catch(e => {
-                                console.error(`Falha na foto ${i}:`, e);
-                                return null;
-                            });
-                    });
-
-                    const results = await Promise.all(uploadPromises);
-                    const success = results.filter(url => url !== null);
-                    galleryUrls = [...galleryUrls, ...success];
+                // Validação simples
+                if (!imageUrl) {
+                    throw new Error("É necessário enviar uma imagem ou manter a existente.");
                 }
 
-                // 3. Salva Dados
+                // 2. Prepara os dados
                 const data = {
                     title: formData.get('title'),
                     location: formData.get('location'),
@@ -197,79 +121,55 @@
                     type: formData.get('type'),
                     beds: Number(formData.get('beds')),
                     baths: Number(formData.get('baths')),
-                    garages: Number(formData.get('garages') || 0),
+                    garages: Number(formData.get('garages') || 0), // Novo campo Vagas
                     area: Number(formData.get('area')),
-                    image: coverUrl, 
-                    gallery: galleryUrls, 
+                    image: imageUrl, // Usa a URL (nova ou antiga)
                     description: formData.get('description'),
                     featured: formData.get('featured') === 'on'
                 };
 
                 const id = document.getElementById('edit-id').value;
-                submitBtn.textContent = "Finalizando...";
 
+                // 3. Salva no Firestore
+                submitBtn.textContent = "Salvando dados...";
                 if (id) {
-                    await updateDoc(doc(db, 'imoveis', id), data);
-                    showToast("Atualizado!", "success");
+                    const docRef = doc(db, 'imoveis', id);
+                    await updateDoc(docRef, data);
+                    showToast("Imóvel atualizado!", "success");
                 } else {
                     await addDoc(getCollectionRef(), data);
-                    showToast("Criado!", "success");
+                    showToast("Imóvel criado com sucesso!", "success");
                 }
 
                 toggleModal('admin-modal', false);
 
             } catch (e) {
-                console.error("Erro:", e);
-                alert(`Erro: ${e.message}`);
+                console.error("Erro no processo:", e);
+                showToast(e.message || "Erro ao salvar.", "error");
             } finally {
                 submitBtn.disabled = false;
                 submitBtn.textContent = originalBtnText;
             }
         };
 
-        // ... Resto das funções (CRUD, Galeria, UI) permanecem iguais ...
+        // Deletar (Delete)
         window.deletePropertyFromDb = async (id) => {
-            if(!confirm("Excluir imóvel?")) return;
-            try { await deleteDoc(doc(db, 'imoveis', id)); showToast("Removido.", "success"); }
-            catch (e) { showToast("Erro ao deletar.", "error"); }
-        };
-
-        window.openGalleryModal = (gallery) => {
-            if (!gallery?.length) return;
-            currentGalleryImages = gallery;
-            currentGalleryIndex = 0;
-            updateGalleryDisplay();
-            toggleModal('gallery-modal', true);
-        };
-
-        window.changeGalleryImage = (direction) => {
-            currentGalleryIndex += direction;
-            if (currentGalleryIndex >= currentGalleryImages.length) currentGalleryIndex = 0;
-            else if (currentGalleryIndex < 0) currentGalleryIndex = currentGalleryImages.length - 1;
-            updateGalleryDisplay();
-        };
-
-        function updateGalleryDisplay() {
-            const imgEl = document.getElementById('gallery-current-image');
-            const counterEl = document.getElementById('gallery-counter');
-            imgEl.style.opacity = '0.5';
-            setTimeout(() => {
-                imgEl.src = currentGalleryImages[currentGalleryIndex];
-                imgEl.onload = () => { imgEl.style.opacity = '1'; };
-                counterEl.textContent = `${currentGalleryIndex + 1} / ${currentGalleryImages.length}`;
-            }, 100);
-        }
-
-        window.clearGallery = () => {
-            if(confirm("Limpar fotos extras?")) {
-                document.getElementById('gallery-urls-input').value = '[]';
-                document.getElementById('gallery-count-status').textContent = 'Galeria limpa.';
+            if(!confirm("Tem certeza que deseja excluir este imóvel?")) return;
+            try {
+                const docRef = doc(db, 'imoveis', id);
+                await deleteDoc(docRef);
+                showToast("Imóvel removido.", "success");
+            } catch (e) {
+                console.error("Erro ao deletar", e);
+                showToast("Erro ao deletar.", "error");
             }
         };
 
+        // Exportar para uso no HTML
         window.isAdminUser = () => isAdmin;
         window.setAdminStatus = (status) => { isAdmin = status; renderProperties(); updateAdminUI(); };
         window.getProperties = () => properties;
+        
     </script>
 
     <!-- Custom Styles -->
@@ -283,8 +183,13 @@
         .modal-scroll::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
         .modal-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
         
-        .admin-controls { display: none; }
-        body.is-admin .admin-controls { display: flex; }
+        /* Admin Badge Overlay */
+        .admin-controls {
+            display: none; /* Hidden by default */
+        }
+        body.is-admin .admin-controls {
+            display: flex;
+        }
     </style>
 </head>
 <body class="bg-slate-50 font-sans text-slate-800">
@@ -302,33 +207,41 @@
                 </div>
             </div>
 
+            <!-- Desktop Menu -->
             <div class="hidden md:flex items-center gap-8">
                 <a href="#" class="font-medium text-slate-600 hover:text-blue-700 transition-colors">Início</a>
                 <a href="#imoveis" class="font-medium text-slate-600 hover:text-blue-700 transition-colors">Imóveis</a>
                 <a href="#sobre" class="font-medium text-slate-600 hover:text-blue-700 transition-colors">Sobre Nós</a>
                 
+                <!-- Botão Admin (Visível apenas se logado) -->
                 <button id="admin-panel-btn" onclick="openAdminPanel()" class="hidden bg-slate-800 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-slate-700 transition-colors flex items-center gap-2">
                     <i data-lucide="settings" width="16"></i> Painel
                 </button>
 
+                <!-- BOTÃO CONTATO (NAVBAR) -->
                 <a href="https://w.app/primehouse" target="_blank" class="bg-amber-500 hover:bg-amber-600 text-white px-5 py-2 rounded-lg font-semibold transition-colors flex items-center gap-2">
                     <i data-lucide="message-circle" width="18" height="18"></i>
                     Contato
                 </a>
             </div>
 
+            <!-- Mobile Menu Toggle -->
             <button id="mobile-menu-btn" class="md:hidden text-slate-700">
                 <i data-lucide="menu" width="28" height="28" id="menu-icon"></i>
             </button>
         </div>
 
+        <!-- Mobile Menu Content -->
         <div id="mobile-menu" class="hidden md:hidden bg-white border-t border-slate-100 absolute w-full px-4 py-6 shadow-lg flex flex-col gap-4">
             <a href="#" class="text-lg font-medium text-slate-700 mobile-link">Início</a>
             <a href="#imoveis" class="text-lg font-medium text-slate-700 mobile-link">Imóveis</a>
             <a href="#sobre" class="text-lg font-medium text-slate-700 mobile-link">Sobre Nós</a>
             <button onclick="openLoginModal()" class="text-left text-lg font-medium text-slate-500 mobile-link">Área do Corretor</button>
+            
+            <!-- BOTÃO WHATSAPP (MOBILE) -->
             <a href="https://w.app/primehouse" target="_blank" class="bg-green-500 text-white w-full py-3 rounded-lg font-bold flex justify-center items-center gap-2">
-                <i data-lucide="message-circle" width="20" height="20"></i> WhatsApp
+                <i data-lucide="message-circle" width="20" height="20"></i>
+                WhatsApp
             </a>
         </div>
     </nav>
@@ -346,6 +259,7 @@
                 Encontre o imóvel perfeito para sua nova história.
             </h2>
             
+            <!-- Barra de Busca -->
             <div class="bg-white p-2 rounded-lg shadow-2xl max-w-3xl mx-auto flex flex-col md:flex-row gap-2">
                 <div class="relative flex-grow">
                     <div class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"><i data-lucide="search" width="20"></i></div>
@@ -377,13 +291,16 @@
                 </div>
             </div>
 
+            <!-- Grid de Imóveis -->
             <div id="properties-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <!-- Injetado via JS -->
                 <div class="col-span-full text-center py-10 text-slate-400">
                     <div class="animate-spin inline-block w-8 h-8 border-4 border-current border-t-transparent rounded-full" role="status"></div>
                     <p class="mt-2">Conectando ao banco de dados...</p>
                 </div>
             </div>
             
+            <!-- Estado Vazio -->
             <div id="empty-state" class="hidden text-center py-20 bg-white rounded-lg border border-dashed border-slate-300">
                 <div class="mx-auto text-slate-300 mb-4 w-12 h-12 flex justify-center items-center"><i data-lucide="home" width="48"></i></div>
                 <h3 class="text-xl font-medium text-slate-600">Nenhum imóvel encontrado.</h3>
@@ -408,6 +325,7 @@
                     <li class="flex items-center gap-3"><i data-lucide="check-circle" class="text-amber-400" width="20"></i> <span>Assessoria jurídica completa</span></li>
                 </ul>
                 
+                <!-- BOTÃO ANUNCIAR -->
                 <a href="https://w.app/primehouse" target="_blank" class="bg-white text-blue-900 px-8 py-3 rounded-lg font-bold hover:bg-slate-100 transition-colors inline-flex items-center gap-2">
                     Anunciar meu Imóvel <i data-lucide="arrow-right" width="20"></i>
                 </a>
@@ -502,6 +420,7 @@
                         <i data-lucide="bath" width="20" class="mx-auto text-blue-600 mb-1"></i>
                         <span id="modal-baths" class="font-bold text-slate-800"></span>
                     </div>
+                    <!-- Nova Célula de Vagas -->
                     <div class="text-center p-3 bg-slate-50 rounded-lg border border-slate-100">
                         <i data-lucide="car" width="20" class="mx-auto text-blue-600 mb-1"></i>
                         <span id="modal-garages" class="font-bold text-slate-800"></span>
@@ -511,11 +430,7 @@
                         <span id="modal-area" class="font-bold text-slate-800"></span>
                     </div>
                 </div>
-
-                <button id="btn-open-gallery" class="w-full mb-3 bg-white border-2 border-blue-600 text-blue-700 hover:bg-blue-50 font-bold py-3 rounded-lg flex items-center justify-center gap-2 transition-colors hidden">
-                    <i data-lucide="images" width="20"></i> Ver Fotos do Imóvel
-                </button>
-
+                <!-- BOTÃO AGENDAR (MODAL) -->
                 <a href="https://w.app/primehouse" target="_blank" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2 transition-colors">
                     <i data-lucide="message-circle" width="20"></i> WhatsApp
                 </a>
@@ -523,31 +438,10 @@
         </div>
     </div>
 
-    <!-- MODAL: GALERIA -->
-    <div id="gallery-modal" class="fixed inset-0 z-[80] hidden flex items-center justify-center bg-black/95 animate-fade-in">
-        <button onclick="toggleModal('gallery-modal', false)" class="absolute top-4 right-4 text-white/70 hover:text-white z-50">
-            <i data-lucide="x" width="32"></i>
-        </button>
-        
-        <div class="relative w-full h-full flex flex-col items-center justify-center px-4 md:px-12">
-            <img id="gallery-current-image" src="" class="max-w-full max-h-[85vh] object-contain transition-opacity duration-300 rounded-lg shadow-2xl"/>
-            
-            <div id="gallery-counter" class="absolute bottom-6 left-1/2 -translate-x-1/2 text-white/80 font-medium bg-black/50 px-4 py-1 rounded-full text-sm">
-                1 / 5
-            </div>
-
-            <button onclick="changeGalleryImage(-1)" class="absolute left-2 md:left-8 top-1/2 -translate-y-1/2 text-white/50 hover:text-white bg-black/30 hover:bg-black/60 p-2 rounded-full transition-colors">
-                <i data-lucide="chevron-left" width="40" height="40"></i>
-            </button>
-            <button onclick="changeGalleryImage(1)" class="absolute right-2 md:right-8 top-1/2 -translate-y-1/2 text-white/50 hover:text-white bg-black/30 hover:bg-black/60 p-2 rounded-full transition-colors">
-                <i data-lucide="chevron-right" width="40" height="40"></i>
-            </button>
-        </div>
-    </div>
-
-    <!-- MODAL: ADMIN DASHBOARD -->
+    <!-- MODAL: ADMIN DASHBOARD (CRUD) -->
     <div id="admin-panel-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
         <div class="bg-white rounded-xl w-full max-w-5xl max-h-[90vh] flex flex-col shadow-2xl relative">
+            <!-- Header -->
             <div class="bg-slate-900 text-white p-6 rounded-t-xl flex justify-between items-center">
                 <h2 class="text-xl font-bold flex items-center gap-2"><i data-lucide="settings" width="20"></i> Painel Administrativo</h2>
                 <div class="flex gap-4">
@@ -558,6 +452,7 @@
                 </div>
             </div>
             
+            <!-- List -->
             <div class="p-6 overflow-y-auto modal-scroll bg-slate-50 flex-grow">
                 <table class="w-full text-left border-collapse">
                     <thead>
@@ -574,6 +469,7 @@
                 </table>
             </div>
             
+            <!-- Logout -->
             <div class="p-4 border-t border-slate-200 bg-white rounded-b-xl flex justify-between items-center">
                 <span class="text-xs text-slate-500">Logado como Admin</span>
                 <button onclick="handleLogout()" class="text-red-500 hover:text-red-700 text-sm font-medium">Sair</button>
@@ -630,6 +526,7 @@
                         <label class="label-text">Banheiros</label>
                         <input type="number" name="baths" required class="input-field">
                     </div>
+                     <!-- Novo Campo Vagas -->
                     <div>
                         <label class="label-text">Vagas</label>
                         <input type="number" name="garages" required class="input-field">
@@ -640,27 +537,23 @@
                     </div>
                 </div>
 
-                <!-- CAPA -->
-                <div class="bg-slate-50 p-4 rounded-lg border border-slate-200">
-                    <label class="label-text text-blue-900 mb-2 border-b pb-1 border-slate-200">1. Foto da Capa (Principal)</label>
+                <!-- CAMPO DE IMAGEM ALTERADO -->
+                <div>
+                    <label class="label-text">Imagem do Imóvel</label>
+                    <!-- Campo oculto para armazenar URL existente ao editar -->
                     <input type="hidden" name="image" id="image-url-input">
+                    
+                    <!-- Input de Arquivo -->
                     <input type="file" id="image-file-input" accept="image/*" class="input-field block w-full text-sm text-slate-500
-                      file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold
-                      file:bg-blue-100 file:text-blue-700 hover:file:bg-blue-200 mb-1 cursor-pointer"/>
+                      file:mr-4 file:py-2 file:px-4
+                      file:rounded-full file:border-0
+                      file:text-sm file:font-semibold
+                      file:bg-blue-50 file:text-blue-700
+                      hover:file:bg-blue-100 mb-1 cursor-pointer
+                    "/>
+                    
+                    <!-- Feedback visual de edição -->
                     <div id="image-preview-status" class="text-xs text-slate-500 h-5 flex items-center gap-2"></div>
-                </div>
-
-                <!-- GALERIA -->
-                <div class="bg-slate-50 p-4 rounded-lg border border-slate-200">
-                    <label class="label-text text-blue-900 mb-2 border-b pb-1 border-slate-200">2. Fotos do Imóvel (Galeria)</label>
-                    <input type="hidden" name="gallery_urls" id="gallery-urls-input" value="[]">
-                    <input type="file" id="gallery-files-input" multiple accept="image/*" class="input-field block w-full text-sm text-slate-500
-                      file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold
-                      file:bg-green-100 file:text-green-700 hover:file:bg-green-200 mb-1 cursor-pointer"/>
-                    <div class="flex justify-between items-center">
-                        <div id="gallery-count-status" class="text-xs text-slate-500"></div>
-                        <button type="button" onclick="window.clearGallery()" class="text-xs text-red-500 hover:underline">Limpar Galeria</button>
-                    </div>
                 </div>
 
                 <div>
@@ -675,32 +568,35 @@
         </div>
     </div>
 
-    <!-- TOAST -->
+    <!-- TOAST NOTIFICATION -->
     <div id="toast" class="fixed bottom-4 right-4 bg-slate-800 text-white px-6 py-3 rounded-lg shadow-lg transform translate-y-20 opacity-0 transition-all duration-300 z-[70]">
         <span id="toast-msg">Mensagem</span>
     </div>
 
-    <!-- STYLE HELPERS -->
+    <!-- STYLE HELPERS FOR FORM -->
     <style>
         .label-text { display: block; font-size: 0.75rem; font-weight: 700; color: #475569; text-transform: uppercase; margin-bottom: 0.25rem; }
         .input-field { width: 100%; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 0.5rem; padding: 0.5rem 1rem; outline: none; transition: border-color 0.2s; }
         .input-field:focus { border-color: #3b82f6; background: white; }
     </style>
 
-    <!-- JS UI LOGIC -->
+    <!-- JAVASCRIPT UI LOGIC -->
     <script>
+        // --- STATE & UTILS ---
         let currentFilter = 'todos';
         let currentSearch = '';
 
+        // Funções Auxiliares
         const formatCurrency = (value, type) => {
             return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(value) + (type === 'aluguel' ? '/mês' : '');
         };
 
+        // Normalização de texto (remove acentos e transforma em minúsculas)
         const normalizeText = (text) => {
             return (text || '')
-                .normalize('NFD') 
-                .replace(/[\u0300-\u036f]/g, "") 
-                .toLowerCase(); 
+                .normalize('NFD') // Separa caracteres de acentos
+                .replace(/[\u0300-\u036f]/g, "") // Remove os acentos
+                .toLowerCase(); // Converte para minúsculas
         };
 
         function toggleModal(id, show) {
@@ -714,23 +610,33 @@
             document.getElementById('toast-msg').textContent = msg;
             toast.className = `fixed bottom-4 right-4 px-6 py-3 rounded-lg shadow-lg transform transition-all duration-300 z-[70] ${type === 'success' ? 'bg-green-600 text-white' : (type === 'error' ? 'bg-red-600 text-white' : 'bg-slate-800 text-white')}`;
             
+            // Show
             setTimeout(() => { toast.classList.remove('translate-y-20', 'opacity-0'); }, 10);
+            // Hide
             setTimeout(() => { toast.classList.add('translate-y-20', 'opacity-0'); }, 3000);
         }
 
+        // --- RENDER MAIN LIST ---
         function renderProperties() {
-            const properties = window.getProperties(); 
+            const properties = window.getProperties(); // Get from Module scope
             const grid = document.getElementById('properties-grid');
             const emptyState = document.getElementById('empty-state');
             
+            // Prepara o termo de busca normalizado
             const searchNormalized = normalizeText(currentSearch);
 
+            // Filter
             const filtered = properties.filter(p => {
                 const matchesType = currentFilter === 'todos' ? true : p.type === currentFilter;
+                
+                // Normaliza campos do imóvel
                 const titleNormalized = normalizeText(p.title);
                 const locationNormalized = normalizeText(p.location);
+
+                // Compara usando versões normalizadas
                 const matchesSearch = titleNormalized.includes(searchNormalized) || 
                                       locationNormalized.includes(searchNormalized);
+                                      
                 return matchesType && matchesSearch;
             });
 
@@ -747,6 +653,7 @@
                     const card = document.createElement('div');
                     card.className = "group bg-white rounded-xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden border border-slate-100 cursor-pointer flex flex-col h-full relative";
                     card.onclick = (e) => {
+                        // Prevent opening modal if clicking admin buttons (future proofing)
                         if(!e.target.closest('.admin-btn')) openPropertyModal(property);
                     };
 
@@ -789,6 +696,7 @@
             document.getElementById('modal-location').textContent = property.location;
             document.getElementById('modal-beds').textContent = property.beds;
             document.getElementById('modal-baths').textContent = property.baths;
+            // Preenche Vagas
             document.getElementById('modal-garages').textContent = property.garages || 0;
             document.getElementById('modal-area').textContent = property.area + 'm²';
             
@@ -796,21 +704,14 @@
             badge.textContent = property.type;
             badge.className = `px-2 py-1 text-xs font-bold uppercase tracking-wide rounded ${property.type === 'venda' ? 'bg-blue-100 text-blue-800' : 'bg-emerald-100 text-emerald-800'}`;
             
-            const galleryBtn = document.getElementById('btn-open-gallery');
-            if (property.gallery && property.gallery.length > 0) {
-                galleryBtn.classList.remove('hidden');
-                const fullGallery = [property.image, ...property.gallery];
-                galleryBtn.onclick = () => window.openGalleryModal(fullGallery);
-            } else {
-                galleryBtn.classList.add('hidden');
-            }
-
             toggleModal('property-modal', true);
         }
 
+        // --- AUTH & ADMIN UI ---
+        
         function openLoginModal() {
             if(window.isAdminUser()) {
-                openAdminPanel();
+                openAdminPanel(); // Already logged in
             } else {
                 toggleModal('login-modal', true);
             }
@@ -819,6 +720,8 @@
         function handleLogin(e) {
             e.preventDefault();
             const pass = document.getElementById('login-password').value;
+            // Validação de senha mascarada (Base64)
+            // Senha real: @dmin#P@D@
             if (btoa(pass) === 'QGRtaW4jUEBEQA==') {
                 window.setAdminStatus(true);
                 toggleModal('login-modal', false);
@@ -870,55 +773,52 @@
             lucide.createIcons();
         }
 
+        // --- FORM HANDLING (CREATE/UPDATE) ---
+        
         function openEditModal(id = null) {
             const form = document.getElementById('property-form');
             const title = document.getElementById('form-title');
             
-            document.getElementById('image-file-input').value = "";
-            document.getElementById('gallery-files-input').value = "";
-
             if (id) {
+                // Edit Mode
                 const p = window.getProperties().find(i => i.id === id);
                 if (!p) return;
                 
                 document.getElementById('edit-id').value = id;
                 title.textContent = "Editar Imóvel";
                 
+                // Populate fields
                 form.elements['title'].value = p.title;
                 form.elements['location'].value = p.location;
                 form.elements['price'].value = p.price;
                 form.elements['type'].value = p.type;
                 form.elements['beds'].value = p.beds;
                 form.elements['baths'].value = p.baths;
-                form.elements['garages'].value = p.garages || 0; 
+                form.elements['garages'].value = p.garages || 0; // Popula Vagas
                 form.elements['area'].value = p.area;
                 
+                // CAMPO IMAGEM (LÓGICA ESPECIAL PARA INPUT FILE)
                 document.getElementById('image-url-input').value = p.image;
-                document.getElementById('image-preview-status').innerHTML = `Capa atual: <a href="${p.image}" target="_blank" class="text-blue-600 hover:underline">Ver Imagem</a>`;
-                
-                const gallery = p.gallery || [];
-                document.getElementById('gallery-urls-input').value = JSON.stringify(gallery);
-                document.getElementById('gallery-count-status').innerHTML = gallery.length > 0 
-                    ? `<span class="text-green-600 font-bold">${gallery.length} fotos</span> já na galeria.` 
-                    : "Nenhuma foto extra.";
+                document.getElementById('image-preview-status').innerHTML = `Imagem atual: <a href="${p.image}" target="_blank" class="text-blue-600 hover:underline">Ver link</a>`;
+                document.getElementById('image-file-input').value = ""; // Limpa input de arquivo
 
                 form.elements['description'].value = p.description;
                 form.elements['featured'].checked = p.featured;
             } else {
+                // Create Mode
                 document.getElementById('edit-id').value = "";
                 title.textContent = "Novo Imóvel";
                 
                 document.getElementById('image-url-input').value = "";
                 document.getElementById('image-preview-status').innerHTML = "";
-                
-                document.getElementById('gallery-urls-input').value = "[]";
-                document.getElementById('gallery-count-status').innerHTML = "";
+                document.getElementById('image-file-input').value = "";
                 
                 form.reset();
             }
             toggleModal('admin-modal', true);
         }
 
+        // Listeners básicos
         document.querySelectorAll('.filter-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 currentFilter = e.target.getAttribute('data-filter');
@@ -944,12 +844,15 @@
             renderProperties();
         });
 
+        // Toggle mobile menu
         document.getElementById('mobile-menu-btn').addEventListener('click', () => {
             document.getElementById('mobile-menu').classList.toggle('hidden');
         });
 
+        // Contact Form Redirect
         document.getElementById('contact-form').addEventListener('submit', (e) => {
             e.preventDefault();
+            // Opens the link in a new tab
             window.open('https://w.app/primehouse', '_blank');
             e.target.reset();
         });
