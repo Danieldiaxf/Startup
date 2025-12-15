@@ -616,6 +616,28 @@
             lucide.createIcons();
         });
 
+        // Import the functions you need from the SDKs you need
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
+  import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-analytics.js";
+  // TODO: Add SDKs for Firebase products that you want to use
+  // https://firebase.google.com/docs/web/setup#available-libraries
+
+  // Your web app's Firebase configuration
+  // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+  const firebaseConfig = {
+    apiKey: "AIzaSyDEPXe6IU8Q58xAaJTGT0FFSFEte_zppY8",
+    authDomain: "prime-house-fa7b0.firebaseapp.com",
+    projectId: "prime-house-fa7b0",
+    storageBucket: "prime-house-fa7b0.firebasestorage.app",
+    messagingSenderId: "58174312256",
+    appId: "1:58174312256:web:a23faa5f5f69dbeb7c34a5",
+    measurementId: "G-YRN20D8ZFX"
+  };
+
+  // Initialize Firebase
+  const app = initializeApp(firebaseConfig);
+  const analytics = getAnalytics(app);
+        
     </script>
 </body>
 </html>
