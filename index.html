@@ -13,11 +13,11 @@
 
     <!-- Firebase SDKs -->
     <script type="module">
+        // NOTA: Removemos o 'firebase-storage' para evitar erros de CORS/Permissão.
+        // Agora usamos compressão Base64 direta no Firestore.
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
         import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
-        // NOVO IMPORT: Storage
-        import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-storage.js";
 
         // =================================================================================
         // SUAS CONFIGURAÇÕES DO FIREBASE
@@ -37,7 +37,6 @@
         const app = initializeApp(myManualConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
-        const storage = getStorage(app); // Inicializa Storage
 
         // Estado Global
         let currentUser = null;
@@ -82,7 +81,44 @@
             });
         }
 
-        // --- LÓGICA DE UPLOAD E SALVAMENTO ---
+        // --- NOVA LÓGICA DE UPLOAD (COMPRESSÃO BASE64) ---
+        // Isso resolve o problema de CORS evitando o uso do Storage Bucket
+        
+        function compressImage(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = (event) => {
+                    const img = new Image();
+                    img.src = event.target.result;
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        const ctx = canvas.getContext('2d');
+                        
+                        // Redimensionar para evitar documentos gigantes (Max 800px)
+                        const MAX_WIDTH = 800;
+                        let width = img.width;
+                        let height = img.height;
+
+                        if (width > MAX_WIDTH) {
+                            height *= MAX_WIDTH / width;
+                            width = MAX_WIDTH;
+                        }
+
+                        canvas.width = width;
+                        canvas.height = height;
+                        
+                        ctx.drawImage(img, 0, 0, width, height);
+                        
+                        // Comprimir para JPEG qualidade 0.6 (leve)
+                        const dataUrl = canvas.toDataURL('image/jpeg', 0.6);
+                        resolve(dataUrl);
+                    };
+                    img.onerror = (err) => reject(err);
+                };
+                reader.onerror = (err) => reject(err);
+            });
+        }
         
         // Exporta função para ser chamada pelo HTML
         window.handleAdminSubmit = async (event) => {
@@ -91,29 +127,51 @@
             const submitBtn = event.target.querySelector('button[type="submit"]');
             const originalBtnText = submitBtn.textContent;
             submitBtn.disabled = true;
-            submitBtn.textContent = "Processando...";
+            submitBtn.textContent = "Processando imagens...";
 
             try {
                 const formData = new FormData(event.target);
+                const id = document.getElementById('edit-id').value;
+                
+                // 1. Imagem Principal
                 const fileInput = document.getElementById('image-file-input');
                 const file = fileInput.files[0];
-                let imageUrl = document.getElementById('image-url-input').value;
+                let mainImageUrl = document.getElementById('image-url-input').value;
 
-                // 1. Se houver arquivo novo, faz o upload
                 if (file) {
-                    submitBtn.textContent = "Enviando imagem...";
-                    // Cria uma referência única para o arquivo: imoveis/TIMESTAMP_NOME
-                    const storageRef = ref(storage, `imoveis/${Date.now()}_${file.name}`);
-                    const snapshot = await uploadBytes(storageRef, file);
-                    imageUrl = await getDownloadURL(snapshot.ref);
+                    submitBtn.textContent = "Otimizando capa...";
+                    mainImageUrl = await compressImage(file);
                 }
 
-                // Validação simples
-                if (!imageUrl) {
-                    throw new Error("É necessário enviar uma imagem ou manter a existente.");
+                if (!mainImageUrl) {
+                    throw new Error("É necessário enviar uma imagem principal.");
                 }
 
-                // 2. Prepara os dados
+                // 2. Galeria de Imagens (Múltiplas)
+                const galleryInput = document.getElementById('gallery-file-input');
+                const galleryFiles = galleryInput.files;
+                let newGalleryUrls = [];
+
+                if (galleryFiles.length > 0) {
+                    submitBtn.textContent = `Otimizando galeria (${galleryFiles.length} fotos)...`;
+                    
+                    // Processa em paralelo
+                    const processPromises = Array.from(galleryFiles).map(file => compressImage(file));
+                    newGalleryUrls = await Promise.all(processPromises);
+                }
+
+                // Recupera galeria existente se estiver editando
+                let existingGallery = [];
+                if (id) {
+                    const currentProp = properties.find(p => p.id === id);
+                    if (currentProp && currentProp.gallery) {
+                        existingGallery = currentProp.gallery;
+                    }
+                }
+
+                const finalGallery = [...existingGallery, ...newGalleryUrls];
+
+                // 3. Prepara os dados
                 const data = {
                     title: formData.get('title'),
                     location: formData.get('location'),
@@ -121,21 +179,20 @@
                     type: formData.get('type'),
                     beds: Number(formData.get('beds')),
                     baths: Number(formData.get('baths')),
-                    garages: Number(formData.get('garages') || 0), // Novo campo Vagas
+                    garages: Number(formData.get('garages') || 0),
                     area: Number(formData.get('area')),
-                    image: imageUrl, // Usa a URL (nova ou antiga)
+                    image: mainImageUrl, // Agora é uma string Base64 longa
+                    gallery: finalGallery,
                     description: formData.get('description'),
                     featured: formData.get('featured') === 'on'
                 };
 
-                const id = document.getElementById('edit-id').value;
-
-                // 3. Salva no Firestore
-                submitBtn.textContent = "Salvando dados...";
+                // 4. Salva no Firestore
+                submitBtn.textContent = "Salvando no banco...";
                 if (id) {
                     const docRef = doc(db, 'imoveis', id);
                     await updateDoc(docRef, data);
-                    showToast("Imóvel atualizado!", "success");
+                    showToast("Imóvel atualizado com sucesso!", "success");
                 } else {
                     await addDoc(getCollectionRef(), data);
                     showToast("Imóvel criado com sucesso!", "success");
@@ -145,7 +202,12 @@
 
             } catch (e) {
                 console.error("Erro no processo:", e);
-                showToast(e.message || "Erro ao salvar.", "error");
+                // Erro comum: Documento muito grande
+                if (e.message && e.message.includes("exceeds the maximum size")) {
+                    showToast("Erro: Muitas fotos. O tamanho máximo foi excedido.", "error");
+                } else {
+                    showToast(e.message || "Erro ao salvar.", "error");
+                }
             } finally {
                 submitBtn.disabled = false;
                 submitBtn.textContent = originalBtnText;
@@ -164,6 +226,18 @@
                 showToast("Erro ao deletar.", "error");
             }
         };
+
+        // Função para limpar galeria (Reset simples para facilitar manutenção)
+        window.clearGallery = async (id) => {
+            if(!confirm("Isso removerá todas as fotos da galeria deste imóvel. Confirmar?")) return;
+            try {
+                const docRef = doc(db, 'imoveis', id);
+                await updateDoc(docRef, { gallery: [] });
+                showToast("Galeria limpa.", "success");
+            } catch(e) {
+                showToast("Erro ao limpar galeria.", "error");
+            }
+        }
 
         // Exportar para uso no HTML
         window.isAdminUser = () => isAdmin;
@@ -189,6 +263,16 @@
         }
         body.is-admin .admin-controls {
             display: flex;
+        }
+
+        /* Image Zoom */
+        .zoom-img {
+            transition: transform 0.3s ease;
+            cursor: zoom-in;
+        }
+        .zoom-img:active {
+            transform: scale(1.5);
+            z-index: 50;
         }
     </style>
 </head>
@@ -389,52 +473,69 @@
         </div>
     </div>
 
-    <!-- MODAL: DETALHES DO IMÓVEL -->
+    <!-- MODAL: DETALHES DO IMÓVEL (ATUALIZADO COM GALERIA) -->
     <div id="property-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-        <div class="bg-white rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto modal-scroll relative shadow-2xl flex flex-col md:flex-row">
-            <button onclick="toggleModal('property-modal', false)" class="absolute top-4 right-4 z-10 bg-white/80 p-2 rounded-full hover:bg-white text-slate-800 transition-colors">
+        <div class="bg-white rounded-2xl w-full max-w-5xl max-h-[90vh] overflow-y-auto modal-scroll relative shadow-2xl">
+            <button onclick="toggleModal('property-modal', false)" class="absolute top-4 right-4 z-20 bg-white/80 p-2 rounded-full hover:bg-white text-slate-800 transition-colors shadow-md">
                 <i data-lucide="x" width="24"></i>
             </button>
-            <div class="md:w-1/2 relative h-64 md:h-auto">
-                <img id="modal-image" src="" alt="" class="w-full h-full object-cover"/>
-                <div class="absolute bottom-4 left-4 bg-white/90 backdrop-blur px-4 py-2 rounded-lg shadow-lg">
-                    <p class="text-xs text-slate-500 uppercase tracking-wide">Valor</p>
-                    <p id="modal-price" class="text-2xl font-bold text-blue-900"></p>
+            
+            <div class="flex flex-col md:flex-row">
+                <!-- Imagem Principal -->
+                <div class="md:w-1/2 relative h-64 md:h-auto min-h-[300px]">
+                    <img id="modal-image" src="" alt="" class="w-full h-full object-cover absolute inset-0"/>
+                    <div class="absolute bottom-4 left-4 bg-white/90 backdrop-blur px-4 py-2 rounded-lg shadow-lg">
+                        <p class="text-xs text-slate-500 uppercase tracking-wide">Valor</p>
+                        <p id="modal-price" class="text-2xl font-bold text-blue-900"></p>
+                    </div>
+                </div>
+                
+                <!-- Detalhes Texto -->
+                <div class="md:w-1/2 p-8 flex flex-col">
+                    <div class="mb-6">
+                        <div class="flex gap-2 mb-3">
+                            <span id="modal-badge" class="px-2 py-1 text-xs font-bold uppercase tracking-wide rounded"></span>
+                            <span class="text-slate-400 text-sm flex items-center gap-1"><i data-lucide="map-pin" width="14"></i> <span id="modal-location"></span></span>
+                        </div>
+                        <h2 id="modal-title" class="text-2xl font-bold text-slate-900 mb-2"></h2>
+                        <p id="modal-description" class="text-slate-600 leading-relaxed text-sm"></p>
+                    </div>
+                    
+                    <div class="grid grid-cols-4 gap-4 mb-8">
+                        <div class="text-center p-3 bg-slate-50 rounded-lg border border-slate-100">
+                            <i data-lucide="bed" width="20" class="mx-auto text-blue-600 mb-1"></i>
+                            <span id="modal-beds" class="font-bold text-slate-800"></span>
+                        </div>
+                        <div class="text-center p-3 bg-slate-50 rounded-lg border border-slate-100">
+                            <i data-lucide="bath" width="20" class="mx-auto text-blue-600 mb-1"></i>
+                            <span id="modal-baths" class="font-bold text-slate-800"></span>
+                        </div>
+                        <div class="text-center p-3 bg-slate-50 rounded-lg border border-slate-100">
+                            <i data-lucide="car" width="20" class="mx-auto text-blue-600 mb-1"></i>
+                            <span id="modal-garages" class="font-bold text-slate-800"></span>
+                        </div>
+                        <div class="text-center p-3 bg-slate-50 rounded-lg border border-slate-100">
+                            <i data-lucide="square" width="20" class="mx-auto text-blue-600 mb-1"></i>
+                            <span id="modal-area" class="font-bold text-slate-800"></span>
+                        </div>
+                    </div>
+
+                    <a href="https://w.app/primehouse" target="_blank" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2 transition-colors mb-4">
+                        <i data-lucide="message-circle" width="20"></i> WhatsApp
+                    </a>
                 </div>
             </div>
-            <div class="md:w-1/2 p-8 flex flex-col">
-                <div class="mb-6">
-                    <div class="flex gap-2 mb-3">
-                        <span id="modal-badge" class="px-2 py-1 text-xs font-bold uppercase tracking-wide rounded"></span>
-                        <span class="text-slate-400 text-sm flex items-center gap-1"><i data-lucide="map-pin" width="14"></i> <span id="modal-location"></span></span>
-                    </div>
-                    <h2 id="modal-title" class="text-2xl font-bold text-slate-900 mb-2"></h2>
-                    <p id="modal-description" class="text-slate-600 leading-relaxed text-sm"></p>
+
+            <!-- NOVA SEÇÃO: GALERIA -->
+            <div id="modal-gallery-section" class="p-8 border-t border-slate-100 bg-slate-50 hidden">
+                <h3 class="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                    <i data-lucide="images" width="20" class="text-blue-900"></i> Galeria de Fotos
+                </h3>
+                <div id="modal-gallery-grid" class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <!-- Fotos injetadas via JS -->
                 </div>
-                <div class="grid grid-cols-4 gap-4 mb-8">
-                    <div class="text-center p-3 bg-slate-50 rounded-lg border border-slate-100">
-                        <i data-lucide="bed" width="20" class="mx-auto text-blue-600 mb-1"></i>
-                        <span id="modal-beds" class="font-bold text-slate-800"></span>
-                    </div>
-                    <div class="text-center p-3 bg-slate-50 rounded-lg border border-slate-100">
-                        <i data-lucide="bath" width="20" class="mx-auto text-blue-600 mb-1"></i>
-                        <span id="modal-baths" class="font-bold text-slate-800"></span>
-                    </div>
-                    <!-- Nova Célula de Vagas -->
-                    <div class="text-center p-3 bg-slate-50 rounded-lg border border-slate-100">
-                        <i data-lucide="car" width="20" class="mx-auto text-blue-600 mb-1"></i>
-                        <span id="modal-garages" class="font-bold text-slate-800"></span>
-                    </div>
-                    <div class="text-center p-3 bg-slate-50 rounded-lg border border-slate-100">
-                        <i data-lucide="square" width="20" class="mx-auto text-blue-600 mb-1"></i>
-                        <span id="modal-area" class="font-bold text-slate-800"></span>
-                    </div>
-                </div>
-                <!-- BOTÃO AGENDAR (MODAL) -->
-                <a href="https://w.app/primehouse" target="_blank" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2 transition-colors">
-                    <i data-lucide="message-circle" width="20"></i> WhatsApp
-                </a>
             </div>
+
         </div>
     </div>
 
@@ -526,7 +627,6 @@
                         <label class="label-text">Banheiros</label>
                         <input type="number" name="baths" required class="input-field">
                     </div>
-                     <!-- Novo Campo Vagas -->
                     <div>
                         <label class="label-text">Vagas</label>
                         <input type="number" name="garages" required class="input-field">
@@ -537,23 +637,27 @@
                     </div>
                 </div>
 
-                <!-- CAMPO DE IMAGEM ALTERADO -->
-                <div>
-                    <label class="label-text">Imagem do Imóvel</label>
-                    <!-- Campo oculto para armazenar URL existente ao editar -->
+                <!-- IMAGEM PRINCIPAL -->
+                <div class="p-4 bg-slate-50 border border-slate-200 rounded-lg">
+                    <label class="label-text mb-2 text-blue-900">1. Imagem Principal (Capa)</label>
                     <input type="hidden" name="image" id="image-url-input">
-                    
-                    <!-- Input de Arquivo -->
-                    <input type="file" id="image-file-input" accept="image/*" class="input-field block w-full text-sm text-slate-500
-                      file:mr-4 file:py-2 file:px-4
-                      file:rounded-full file:border-0
-                      file:text-sm file:font-semibold
-                      file:bg-blue-50 file:text-blue-700
-                      hover:file:bg-blue-100 mb-1 cursor-pointer
-                    "/>
-                    
-                    <!-- Feedback visual de edição -->
+                    <input type="file" id="image-file-input" accept="image/*" class="input-field mb-2"/>
                     <div id="image-preview-status" class="text-xs text-slate-500 h-5 flex items-center gap-2"></div>
+                </div>
+
+                <!-- GALERIA DE FOTOS -->
+                <div class="p-4 bg-slate-50 border border-slate-200 rounded-lg">
+                    <label class="label-text mb-2 text-blue-900 flex justify-between items-center">
+                        2. Galeria de Fotos (Adicional)
+                        <span id="gallery-count-badge" class="bg-blue-200 text-blue-800 text-[10px] px-2 py-0.5 rounded-full hidden">0 fotos atuais</span>
+                    </label>
+                    <p class="text-xs text-slate-500 mb-2">Selecione várias fotos para adicionar à galeria existente.</p>
+                    <input type="file" id="gallery-file-input" accept="image/*" multiple class="input-field mb-2"/>
+                    
+                    <!-- Botão para limpar galeria (apenas edição) -->
+                    <button type="button" id="btn-clear-gallery" class="hidden text-xs text-red-500 hover:text-red-700 underline mt-2" onclick="">
+                        Remover todas as fotos da galeria
+                    </button>
                 </div>
 
                 <div>
@@ -591,12 +695,11 @@
             return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(value) + (type === 'aluguel' ? '/mês' : '');
         };
 
-        // Normalização de texto (remove acentos e transforma em minúsculas)
         const normalizeText = (text) => {
             return (text || '')
-                .normalize('NFD') // Separa caracteres de acentos
-                .replace(/[\u0300-\u036f]/g, "") // Remove os acentos
-                .toLowerCase(); // Converte para minúsculas
+                .normalize('NFD') 
+                .replace(/[\u0300-\u036f]/g, "") 
+                .toLowerCase(); 
         };
 
         function toggleModal(id, show) {
@@ -622,18 +725,15 @@
             const grid = document.getElementById('properties-grid');
             const emptyState = document.getElementById('empty-state');
             
-            // Prepara o termo de busca normalizado
             const searchNormalized = normalizeText(currentSearch);
 
             // Filter
             const filtered = properties.filter(p => {
                 const matchesType = currentFilter === 'todos' ? true : p.type === currentFilter;
                 
-                // Normaliza campos do imóvel
                 const titleNormalized = normalizeText(p.title);
                 const locationNormalized = normalizeText(p.location);
 
-                // Compara usando versões normalizadas
                 const matchesSearch = titleNormalized.includes(searchNormalized) || 
                                       locationNormalized.includes(searchNormalized);
                                       
@@ -653,7 +753,6 @@
                     const card = document.createElement('div');
                     card.className = "group bg-white rounded-xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden border border-slate-100 cursor-pointer flex flex-col h-full relative";
                     card.onclick = (e) => {
-                        // Prevent opening modal if clicking admin buttons (future proofing)
                         if(!e.target.closest('.admin-btn')) openPropertyModal(property);
                     };
 
@@ -696,7 +795,6 @@
             document.getElementById('modal-location').textContent = property.location;
             document.getElementById('modal-beds').textContent = property.beds;
             document.getElementById('modal-baths').textContent = property.baths;
-            // Preenche Vagas
             document.getElementById('modal-garages').textContent = property.garages || 0;
             document.getElementById('modal-area').textContent = property.area + 'm²';
             
@@ -704,6 +802,43 @@
             badge.textContent = property.type;
             badge.className = `px-2 py-1 text-xs font-bold uppercase tracking-wide rounded ${property.type === 'venda' ? 'bg-blue-100 text-blue-800' : 'bg-emerald-100 text-emerald-800'}`;
             
+            // --- GALERIA LOGIC ---
+            const gallerySection = document.getElementById('modal-gallery-section');
+            const galleryGrid = document.getElementById('modal-gallery-grid');
+            
+            // Limpa galeria anterior
+            galleryGrid.innerHTML = '';
+            
+            if (property.gallery && property.gallery.length > 0) {
+                gallerySection.classList.remove('hidden');
+                property.gallery.forEach(imgUrl => {
+                    const imgContainer = document.createElement('div');
+                    imgContainer.className = "rounded-lg overflow-hidden h-32 md:h-40 border border-slate-200 shadow-sm relative group cursor-pointer";
+                    // Abre a imagem em nova aba ao clicar para "zoom" simples
+                    // Nota: com base64, a URL pode ser muito longa, então apenas abrimos se o navegador suportar.
+                    // Para melhorar a UX, ao clicar, podemos mostrar a imagem no modal principal
+                    imgContainer.onclick = () => {
+                         document.getElementById('modal-image').src = imgUrl;
+                    };
+                    
+                    const img = document.createElement('img');
+                    img.src = imgUrl;
+                    img.className = "w-full h-full object-cover zoom-img";
+                    img.alt = "Detalhe do imóvel";
+                    
+                    const icon = document.createElement('div');
+                    icon.className = "absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100";
+                    icon.innerHTML = `<i data-lucide="eye" class="text-white"></i>`;
+                    
+                    imgContainer.appendChild(img);
+                    imgContainer.appendChild(icon);
+                    galleryGrid.appendChild(imgContainer);
+                });
+                lucide.createIcons();
+            } else {
+                gallerySection.classList.add('hidden');
+            }
+
             toggleModal('property-modal', true);
         }
 
@@ -720,8 +855,7 @@
         function handleLogin(e) {
             e.preventDefault();
             const pass = document.getElementById('login-password').value;
-            // Validação de senha mascarada (Base64)
-            // Senha real: @dmin#P@D@
+            // Senha: @dmin#P@D@
             if (btoa(pass) === 'QGRtaW4jUEBEQA==') {
                 window.setAdminStatus(true);
                 toggleModal('login-modal', false);
@@ -778,7 +912,13 @@
         function openEditModal(id = null) {
             const form = document.getElementById('property-form');
             const title = document.getElementById('form-title');
+            const galleryBadge = document.getElementById('gallery-count-badge');
+            const clearGalleryBtn = document.getElementById('btn-clear-gallery');
             
+            // Reset common fields
+            document.getElementById('image-file-input').value = "";
+            document.getElementById('gallery-file-input').value = "";
+
             if (id) {
                 // Edit Mode
                 const p = window.getProperties().find(i => i.id === id);
@@ -794,13 +934,28 @@
                 form.elements['type'].value = p.type;
                 form.elements['beds'].value = p.beds;
                 form.elements['baths'].value = p.baths;
-                form.elements['garages'].value = p.garages || 0; // Popula Vagas
+                form.elements['garages'].value = p.garages || 0;
                 form.elements['area'].value = p.area;
                 
-                // CAMPO IMAGEM (LÓGICA ESPECIAL PARA INPUT FILE)
+                // Main Image
                 document.getElementById('image-url-input').value = p.image;
-                document.getElementById('image-preview-status').innerHTML = `Imagem atual: <a href="${p.image}" target="_blank" class="text-blue-600 hover:underline">Ver link</a>`;
-                document.getElementById('image-file-input').value = ""; // Limpa input de arquivo
+                if (p.image && p.image.length > 50) {
+                     document.getElementById('image-preview-status').innerHTML = `Imagem atual salva (Base64)`;
+                } else {
+                     document.getElementById('image-preview-status').innerHTML = `Imagem atual: <a href="${p.image}" target="_blank" class="text-blue-600 hover:underline">Ver link</a>`;
+                }
+
+                // Gallery Logic
+                const galleryCount = p.gallery ? p.gallery.length : 0;
+                galleryBadge.textContent = `${galleryCount} fotos atuais`;
+                galleryBadge.classList.remove('hidden');
+                
+                if (galleryCount > 0) {
+                    clearGalleryBtn.classList.remove('hidden');
+                    clearGalleryBtn.onclick = () => window.clearGallery(id);
+                } else {
+                    clearGalleryBtn.classList.add('hidden');
+                }
 
                 form.elements['description'].value = p.description;
                 form.elements['featured'].checked = p.featured;
@@ -811,7 +966,9 @@
                 
                 document.getElementById('image-url-input').value = "";
                 document.getElementById('image-preview-status').innerHTML = "";
-                document.getElementById('image-file-input').value = "";
+                
+                galleryBadge.classList.add('hidden');
+                clearGalleryBtn.classList.add('hidden');
                 
                 form.reset();
             }
@@ -837,7 +994,7 @@
             currentFilter = e.target.value;
             const btn = document.querySelector(`.filter-btn[data-filter="${currentFilter}"]`);
             if(btn) btn.click();
-        });
+        }); 
 
         document.getElementById('search-input').addEventListener('input', (e) => {
             currentSearch = e.target.value;
@@ -852,7 +1009,6 @@
         // Contact Form Redirect
         document.getElementById('contact-form').addEventListener('submit', (e) => {
             e.preventDefault();
-            // Opens the link in a new tab
             window.open('https://w.app/primehouse', '_blank');
             e.target.reset();
         });
