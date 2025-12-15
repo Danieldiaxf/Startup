@@ -11,29 +11,183 @@
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
 
-    <!-- Custom Styles for Animations -->
+    <!-- Firebase SDKs (Versão Compatível com Módulos) -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
+        import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
+
+        // =================================================================================
+        // SUAS CONFIGURAÇÕES DO FIREBASE (JÁ INSERIDAS)
+        // =================================================================================
+        const myManualConfig = {
+            apiKey: "AIzaSyDEPXe6IU8Q58xAaJTGT0FFSFEte_zppY8",
+            authDomain: "prime-house-fa7b0.firebaseapp.com",
+            projectId: "prime-house-fa7b0",
+            storageBucket: "prime-house-fa7b0.firebasestorage.app",
+            messagingSenderId: "58174312256",
+            appId: "1:58174312256:web:a23faa5f5f69dbeb7c34a5",
+            measurementId: "G-YRN20D8ZFX"
+        };
+        // =================================================================================
+
+        // Inicializa Firebase
+        const app = initializeApp(myManualConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // Estado Global
+        let currentUser = null;
+        let isAdmin = false; 
+        let properties = [];
+
+        // Auth Init - Tenta logar anonimamente para permitir leitura
+        signInAnonymously(auth).catch((error) => {
+            console.error("Erro auth anônima:", error);
+            // Se der erro aqui, certifique-se que ativou "Anonymous Auth" no console
+        });
+
+        onAuthStateChanged(auth, (user) => {
+            currentUser = user;
+            if (user) {
+                initApp();
+            }
+        });
+
+        // Referência da Coleção
+        function getCollectionRef() {
+            // Usando uma coleção simples na raiz para seu projeto pessoal
+            return collection(db, 'imoveis');
+        }
+
+        // --- FUNÇÕES DE BANCO DE DADOS (CRUD) ---
+
+        // Ler (Read) - Escuta em tempo real
+        function initApp() {
+            const q = query(getCollectionRef()); 
+            
+            onSnapshot(q, (snapshot) => {
+                properties = snapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data()
+                }));
+                renderProperties();
+                updateAdminList(); 
+            }, (error) => {
+                console.error("Erro ao buscar dados:", error);
+                if (error.code === 'permission-denied') {
+                   console.log("Aguardando permissões ou autenticação...");
+                }
+            });
+        }
+
+        // Criar (Create)
+        window.addPropertyToDb = async (data) => {
+            try {
+                await addDoc(getCollectionRef(), data);
+                showToast("Imóvel adicionado com sucesso!", "success");
+                toggleModal('admin-modal', false);
+            } catch (e) {
+                console.error("Erro ao adicionar", e);
+                showToast("Erro ao salvar. Verifique se o login Anônimo está ativado no Firebase.", "error");
+            }
+        };
+
+        // Atualizar (Update)
+        window.updatePropertyInDb = async (id, data) => {
+            try {
+                const docRef = doc(db, 'imoveis', id);
+                await updateDoc(docRef, data);
+                showToast("Imóvel atualizado!", "success");
+                toggleModal('admin-modal', false);
+            } catch (e) {
+                console.error("Erro ao atualizar", e);
+                showToast("Erro ao atualizar.", "error");
+            }
+        };
+
+        // Deletar (Delete)
+        window.deletePropertyFromDb = async (id) => {
+            if(!confirm("Tem certeza que deseja excluir este imóvel?")) return;
+            try {
+                const docRef = doc(db, 'imoveis', id);
+                await deleteDoc(docRef);
+                showToast("Imóvel removido.", "success");
+            } catch (e) {
+                console.error("Erro ao deletar", e);
+                showToast("Erro ao deletar.", "error");
+            }
+        };
+
+        // Seed Inicial (Botão para preencher banco vazio)
+        window.seedDatabase = async () => {
+            if (properties.length > 0) {
+                showToast("O banco já tem dados.");
+                return;
+            }
+            
+            const initialData = [
+                {
+                    title: "Apartamento de Alto Padrão",
+                    location: "Jardins, São Paulo - SP",
+                    price: 1250000,
+                    type: "venda",
+                    beds: 3,
+                    baths: 2,
+                    area: 120,
+                    image: "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&q=80&w=800",
+                    featured: true,
+                    description: "Espetacular apartamento reformado, com vista livre."
+                },
+                {
+                    title: "Casa em Condomínio",
+                    location: "Alphaville, Barueri - SP",
+                    price: 2800000,
+                    type: "venda",
+                    beds: 4,
+                    baths: 5,
+                    area: 350,
+                    image: "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&q=80&w=800",
+                    featured: true,
+                    description: "Casa moderna com piscina privativa e área gourmet."
+                }
+            ];
+
+            try {
+                for (const item of initialData) {
+                    await addDoc(getCollectionRef(), item);
+                }
+                showToast("Dados de teste criados!", "success");
+            } catch(e) {
+                console.error(e);
+                showToast("Erro ao criar dados. Verifique o console.", "error");
+            }
+        };
+
+        // Exportar para uso no HTML
+        window.isAdminUser = () => isAdmin;
+        window.setAdminStatus = (status) => { isAdmin = status; renderProperties(); updateAdminUI(); };
+        window.getProperties = () => properties;
+        
+    </script>
+
+    <!-- Custom Styles -->
     <style>
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
         }
-        .animate-fade-in {
-            animation: fadeIn 0.5s ease-out forwards;
+        .animate-fade-in { animation: fadeIn 0.5s ease-out forwards; }
+        .modal-scroll::-webkit-scrollbar { width: 8px; }
+        .modal-scroll::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
+        .modal-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        
+        /* Admin Badge Overlay */
+        .admin-controls {
+            display: none; /* Hidden by default */
         }
-        /* Custom scrollbar for modal content if needed */
-        .modal-scroll::-webkit-scrollbar {
-            width: 8px;
-        }
-        .modal-scroll::-webkit-scrollbar-track {
-            background: #f1f1f1;
-            border-radius: 4px;
-        }
-        .modal-scroll::-webkit-scrollbar-thumb {
-            background: #cbd5e1;
-            border-radius: 4px;
-        }
-        .modal-scroll::-webkit-scrollbar-thumb:hover {
-            background: #94a3b8;
+        body.is-admin .admin-controls {
+            display: flex;
         }
     </style>
 </head>
@@ -57,9 +211,15 @@
                 <a href="#" class="font-medium text-slate-600 hover:text-blue-700 transition-colors">Início</a>
                 <a href="#imoveis" class="font-medium text-slate-600 hover:text-blue-700 transition-colors">Imóveis</a>
                 <a href="#sobre" class="font-medium text-slate-600 hover:text-blue-700 transition-colors">Sobre Nós</a>
+                
+                <!-- Botão Admin (Visível apenas se logado) -->
+                <button id="admin-panel-btn" onclick="openAdminPanel()" class="hidden bg-slate-800 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-slate-700 transition-colors flex items-center gap-2">
+                    <i data-lucide="settings" width="16"></i> Painel
+                </button>
+
                 <button class="bg-amber-500 hover:bg-amber-600 text-white px-5 py-2 rounded-lg font-semibold transition-colors flex items-center gap-2">
                     <i data-lucide="message-circle" width="18" height="18"></i>
-                    Entrar em Contato
+                    Contato
                 </button>
             </div>
 
@@ -74,70 +234,47 @@
             <a href="#" class="text-lg font-medium text-slate-700 mobile-link">Início</a>
             <a href="#imoveis" class="text-lg font-medium text-slate-700 mobile-link">Imóveis</a>
             <a href="#sobre" class="text-lg font-medium text-slate-700 mobile-link">Sobre Nós</a>
-            <button class="bg-green-500 text-white w-full py-3 rounded-lg font-bold flex justify-center items-center gap-2">
-                <i data-lucide="message-circle" width="20" height="20"></i>
-                WhatsApp
-            </button>
+            <button onclick="openLoginModal()" class="text-left text-lg font-medium text-slate-500 mobile-link">Área do Corretor</button>
         </div>
     </nav>
 
     <!-- HERO SECTION -->
     <header class="relative pt-24 pb-16 md:pt-32 md:pb-24 bg-slate-900 overflow-hidden">
-        <!-- Imagem de Fundo com Overlay -->
         <div class="absolute inset-0 z-0">
-            <img 
-                src="https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&q=80&w=2000" 
-                alt="Interior de luxo" 
-                class="w-full h-full object-cover opacity-30"
-            />
+            <img src="https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&q=80&w=2000" alt="Interior" class="w-full h-full object-cover opacity-30"/>
             <div class="absolute inset-0 bg-gradient-to-t from-slate-900 to-transparent"></div>
         </div>
 
         <div class="container mx-auto px-4 relative z-10 text-center">
-            <span class="text-amber-400 font-bold tracking-widest uppercase text-sm mb-4 block animate-fade-in">
-                Sua imobiliária de confiança
-            </span>
+            <span class="text-amber-400 font-bold tracking-widest uppercase text-sm mb-4 block animate-fade-in">Sua imobiliária de confiança</span>
             <h2 class="text-4xl md:text-6xl font-bold text-white mb-6 leading-tight max-w-4xl mx-auto">
                 Encontre o imóvel perfeito para sua nova história.
             </h2>
-            <p class="text-slate-300 text-lg md:text-xl mb-10 max-w-2xl mx-auto">
-                Seleção exclusiva de casas e apartamentos com a curadoria que você merece e o atendimento que você precisa.
-            </p>
-
-            <!-- Barra de Busca Principal -->
+            
+            <!-- Barra de Busca -->
             <div class="bg-white p-2 rounded-lg shadow-2xl max-w-3xl mx-auto flex flex-col md:flex-row gap-2">
                 <div class="relative flex-grow">
-                    <div class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
-                        <i data-lucide="search" width="20" height="20"></i>
-                    </div>
-                    <input 
-                        type="text" 
-                        id="search-input"
-                        placeholder="Busque por bairro, cidade ou condomínio..." 
-                        class="w-full pl-10 pr-4 py-3 rounded-md border-none focus:ring-2 focus:ring-blue-500 outline-none text-slate-700"
-                    />
+                    <div class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"><i data-lucide="search" width="20"></i></div>
+                    <input type="text" id="search-input" placeholder="Busque por bairro, cidade..." class="w-full pl-10 pr-4 py-3 rounded-md outline-none text-slate-700"/>
                 </div>
                 <div class="flex gap-2">
-                    <select id="hero-filter-select" class="bg-slate-100 text-slate-700 px-4 py-3 rounded-md font-medium outline-none cursor-pointer hover:bg-slate-200">
+                    <select id="hero-filter-select" class="bg-slate-100 text-slate-700 px-4 py-3 rounded-md font-medium outline-none cursor-pointer">
                         <option value="todos">Todos</option>
                         <option value="venda">Comprar</option>
                         <option value="aluguel">Alugar</option>
                     </select>
-                    <button id="search-btn" class="bg-blue-700 hover:bg-blue-800 text-white px-8 py-3 rounded-md font-bold transition-colors w-full md:w-auto">
-                        Buscar
-                    </button>
                 </div>
             </div>
         </div>
     </header>
 
     <!-- SEÇÃO DE IMÓVEIS -->
-    <section id="imoveis" class="py-16 md:py-24 bg-slate-50">
+    <section id="imoveis" class="py-16 md:py-24 bg-slate-50 min-h-[600px]">
         <div class="container mx-auto px-4">
             <div class="flex flex-col md:flex-row justify-between items-end mb-10 gap-4">
                 <div>
                     <h2 class="text-3xl font-bold text-slate-900 mb-2">Imóveis em Destaque</h2>
-                    <p class="text-slate-500">As melhores oportunidades selecionadas para você.</p>
+                    <p class="text-slate-500">As melhores oportunidades atualizadas em tempo real.</p>
                 </div>
                 <div class="flex bg-white p-1 rounded-lg shadow-sm border border-slate-200" id="filter-buttons">
                     <button data-filter="todos" class="filter-btn px-6 py-2 rounded-md text-sm font-semibold capitalize transition-all bg-blue-900 text-white shadow">Todos</button>
@@ -148,61 +285,21 @@
 
             <!-- Grid de Imóveis -->
             <div id="properties-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                <!-- Os imóveis serão injetados aqui via JavaScript -->
+                <!-- Injetado via JS -->
+                <div class="col-span-full text-center py-10 text-slate-400">
+                    <div class="animate-spin inline-block w-8 h-8 border-4 border-current border-t-transparent rounded-full" role="status"></div>
+                    <p class="mt-2">Conectando ao banco de dados...</p>
+                </div>
             </div>
             
-            <!-- Estado Vazio (Hidden by default) -->
+            <!-- Estado Vazio -->
             <div id="empty-state" class="hidden text-center py-20 bg-white rounded-lg border border-dashed border-slate-300">
-                <div class="mx-auto text-slate-300 mb-4 w-12 h-12 flex justify-center items-center">
-                    <i data-lucide="home" width="48" height="48"></i>
-                </div>
+                <div class="mx-auto text-slate-300 mb-4 w-12 h-12 flex justify-center items-center"><i data-lucide="home" width="48"></i></div>
                 <h3 class="text-xl font-medium text-slate-600">Nenhum imóvel encontrado.</h3>
-                <p class="text-slate-500">Tente ajustar seus filtros de busca.</p>
-            </div>
-        </div>
-    </section>
-
-    <!-- SEÇÃO DE CAPTAÇÃO / LEAD -->
-    <section id="sobre" class="bg-blue-900 py-16 text-white relative overflow-hidden">
-        <div class="absolute top-0 right-0 w-64 h-64 bg-amber-500 rounded-full blur-3xl opacity-20 translate-x-1/2 -translate-y-1/2"></div>
-        <div class="container mx-auto px-4 flex flex-col md:flex-row items-center gap-12 relative z-10">
-            <div class="md:w-1/2">
-                <h2 class="text-3xl md:text-4xl font-bold mb-4">Deseja anunciar o seu imóvel?</h2>
-                <p class="text-blue-100 text-lg mb-8 leading-relaxed">
-                    Deixe que cuidamos de tudo para você. Avaliação precisa, fotos profissionais e marketing focado para vender mais rápido.
-                </p>
-                <ul class="space-y-3 mb-8">
-                    <li class="flex items-center gap-3"><i data-lucide="check-circle" class="text-amber-400" width="20"></i> <span>Avaliação gratuita de mercado</span></li>
-                    <li class="flex items-center gap-3"><i data-lucide="check-circle" class="text-amber-400" width="20"></i> <span>Fotografia profissional</span></li>
-                    <li class="flex items-center gap-3"><i data-lucide="check-circle" class="text-amber-400" width="20"></i> <span>Divulgação nos principais portais</span></li>
-                    <li class="flex items-center gap-3"><i data-lucide="check-circle" class="text-amber-400" width="20"></i> <span>Assessoria jurídica completa</span></li>
-                </ul>
-                <button class="bg-white text-blue-900 px-8 py-3 rounded-lg font-bold hover:bg-slate-100 transition-colors inline-flex items-center gap-2">
-                    Anunciar meu Imóvel <i data-lucide="arrow-right" width="20"></i>
+                <p class="text-slate-500 mb-4">Seu banco de dados está vazio.</p>
+                <button onclick="window.seedDatabase()" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors text-sm font-bold">
+                    <i data-lucide="database" class="inline w-4 h-4 mr-1"></i> Gerar dados de teste
                 </button>
-            </div>
-            <div class="md:w-1/2 bg-white/10 backdrop-blur-sm p-8 rounded-2xl border border-white/20 w-full">
-                <h3 class="text-2xl font-bold mb-2">Fale com um Especialista</h3>
-                <p class="text-blue-100 mb-6 text-sm">Preencha o formulário e entraremos em contato hoje mesmo.</p>
-                <form id="contact-form" class="space-y-4">
-                    <input 
-                        type="text" 
-                        id="form-name"
-                        placeholder="Seu Nome" 
-                        required
-                        class="w-full bg-blue-950/50 border border-blue-700 rounded-lg px-4 py-3 text-white placeholder-blue-300 focus:outline-none focus:border-amber-500 transition-colors"
-                    />
-                    <input 
-                        type="tel" 
-                        id="form-phone"
-                        placeholder="Seu WhatsApp (com DDD)" 
-                        required
-                        class="w-full bg-blue-950/50 border border-blue-700 rounded-lg px-4 py-3 text-white placeholder-blue-300 focus:outline-none focus:border-amber-500 transition-colors"
-                    />
-                    <button type="submit" class="w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-3 rounded-lg shadow-lg shadow-amber-500/20 transition-all transform hover:-translate-y-1">
-                        Solicitar Contato
-                    </button>
-                </form>
             </div>
         </div>
     </section>
@@ -215,62 +312,50 @@
                     <i data-lucide="home" class="text-amber-500" width="24"></i>
                     <span class="text-xl font-bold">PRIME HOUSE</span>
                 </div>
-                <p class="text-sm leading-relaxed mb-4">
-                    Sua parceira na jornada de encontrar o lar ideal. Transparência, ética e compromisso com o seu sonho.
-                </p>
-                <div class="flex gap-4">
-                    <a href="#" class="hover:text-amber-500 transition-colors"><i data-lucide="instagram" width="20"></i></a>
-                    <a href="#" class="hover:text-amber-500 transition-colors"><i data-lucide="facebook" width="20"></i></a>
-                </div>
+                <p class="text-sm leading-relaxed mb-4">Transparência, ética e compromisso com o seu sonho.</p>
             </div>
-            
-            <div>
-                <h4 class="text-white font-bold mb-4">Navegação</h4>
-                <ul class="space-y-2 text-sm">
-                    <li><a href="#" class="hover:text-white transition-colors">Comprar Imóvel</a></li>
-                    <li><a href="#" class="hover:text-white transition-colors">Alugar Imóvel</a></li>
-                    <li><a href="#" class="hover:text-white transition-colors">Anunciar Imóvel</a></li>
-                    <li><a href="#" class="hover:text-white transition-colors">Financiamento</a></li>
-                </ul>
-            </div>
-
             <div>
                 <h4 class="text-white font-bold mb-4">Contato</h4>
                 <ul class="space-y-2 text-sm">
-                    <li class="flex items-center gap-2">
-                        <i data-lucide="phone" width="16"></i> (61)9985-8741
-                    </li>
-                    <li class="flex items-center gap-2">
-                        <i data-lucide="mail" width="16"></i> PauloMota@gmail.com
-                    </li>
-                    <li class="flex items-center gap-2">
-                        <i data-lucide="map-pin" width="16"></i> ST.D SUL, Taguatinga - DF
-                    </li>
+                    <li class="flex items-center gap-2"><i data-lucide="phone" width="16"></i> (61)9985-8741</li>
                 </ul>
             </div>
-
             <div>
-                <h4 class="text-white font-bold mb-4">Horário</h4>
-                <p class="text-sm">Segunda a Sexta: 09h às 18h</p>
-                <p class="text-sm">Sábado: 09h às 13h</p>
-                <div class="mt-4 pt-4 border-t border-slate-800 text-xs text-slate-500">
-                    CRECI: J-12345
-                </div>
+                <h4 class="text-white font-bold mb-4">Admin</h4>
+                <button onclick="openLoginModal()" class="text-sm hover:text-white flex items-center gap-2 transition-colors">
+                    <i data-lucide="lock" width="14"></i> Área do Corretor
+                </button>
             </div>
         </div>
         <div class="container mx-auto px-4 mt-12 pt-8 border-t border-slate-900 text-center text-xs">
-            &copy; PRIME HOUSE IMÓVEIS. Todos os direitos reservados.
+            &copy; PRIME HOUSE IMÓVEIS.
         </div>
     </footer>
 
-    <!-- PROPERTY DETAILS MODAL (Hidden by default) -->
+    <!-- MODAL: LOGIN (SIMULADO PARA ACESSO) -->
+    <div id="login-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in">
+        <div class="bg-white rounded-xl w-full max-w-sm p-8 shadow-2xl relative">
+            <button onclick="toggleModal('login-modal', false)" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600"><i data-lucide="x" width="20"></i></button>
+            <h3 class="text-2xl font-bold text-slate-900 mb-2">Área Restrita</h3>
+            <p class="text-slate-500 mb-6 text-sm">Acesso exclusivo para corretores.</p>
+            
+            <form onsubmit="handleLogin(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Senha de Acesso</label>
+                    <input type="password" id="login-password" placeholder="Senha do admin" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors">
+                    <p class="text-xs text-slate-400 mt-1">Dica para teste: <strong>admin123</strong></p>
+                </div>
+                <button type="submit" class="w-full bg-blue-900 hover:bg-blue-800 text-white font-bold py-3 rounded-lg transition-colors">Entrar</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: DETALHES DO IMÓVEL -->
     <div id="property-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
         <div class="bg-white rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto modal-scroll relative shadow-2xl flex flex-col md:flex-row">
-            <button id="close-modal-btn" class="absolute top-4 right-4 z-10 bg-white/80 p-2 rounded-full hover:bg-white text-slate-800 transition-colors">
+            <button onclick="toggleModal('property-modal', false)" class="absolute top-4 right-4 z-10 bg-white/80 p-2 rounded-full hover:bg-white text-slate-800 transition-colors">
                 <i data-lucide="x" width="24"></i>
             </button>
-
-            <!-- Modal Image Section -->
             <div class="md:w-1/2 relative h-64 md:h-auto">
                 <img id="modal-image" src="" alt="" class="w-full h-full object-cover"/>
                 <div class="absolute bottom-4 left-4 bg-white/90 backdrop-blur px-4 py-2 rounded-lg shadow-lg">
@@ -278,307 +363,249 @@
                     <p id="modal-price" class="text-2xl font-bold text-blue-900"></p>
                 </div>
             </div>
-
-            <!-- Modal Content Section -->
             <div class="md:w-1/2 p-8 flex flex-col">
                 <div class="mb-6">
                     <div class="flex gap-2 mb-3">
                        <span id="modal-badge" class="px-2 py-1 text-xs font-bold uppercase tracking-wide rounded"></span>
-                       <span class="text-slate-400 text-sm flex items-center gap-1">
-                           <i data-lucide="map-pin" width="14"></i> <span id="modal-location"></span>
-                       </span>
+                       <span class="text-slate-400 text-sm flex items-center gap-1"><i data-lucide="map-pin" width="14"></i> <span id="modal-location"></span></span>
                     </div>
                     <h2 id="modal-title" class="text-2xl font-bold text-slate-900 mb-2"></h2>
                     <p id="modal-description" class="text-slate-600 leading-relaxed text-sm"></p>
                 </div>
-
                 <div class="grid grid-cols-3 gap-4 mb-8">
                     <div class="text-center p-3 bg-slate-50 rounded-lg border border-slate-100">
-                        <div class="flex justify-center mb-1 text-blue-600"><i data-lucide="bed" width="20"></i></div>
-                        <span id="modal-beds" class="block font-bold text-slate-800"></span>
-                        <span class="text-xs text-slate-500">Quartos</span>
+                        <i data-lucide="bed" width="20" class="mx-auto text-blue-600 mb-1"></i>
+                        <span id="modal-beds" class="font-bold text-slate-800"></span>
                     </div>
                     <div class="text-center p-3 bg-slate-50 rounded-lg border border-slate-100">
-                        <div class="flex justify-center mb-1 text-blue-600"><i data-lucide="bath" width="20"></i></div>
-                        <span id="modal-baths" class="block font-bold text-slate-800"></span>
-                        <span class="text-xs text-slate-500">Banheiros</span>
+                        <i data-lucide="bath" width="20" class="mx-auto text-blue-600 mb-1"></i>
+                        <span id="modal-baths" class="font-bold text-slate-800"></span>
                     </div>
                     <div class="text-center p-3 bg-slate-50 rounded-lg border border-slate-100">
-                        <div class="flex justify-center mb-1 text-blue-600"><i data-lucide="square" width="20"></i></div>
-                        <span id="modal-area" class="block font-bold text-slate-800"></span>
-                        <span class="text-xs text-slate-500">Área Útil</span>
+                        <i data-lucide="square" width="20" class="mx-auto text-blue-600 mb-1"></i>
+                        <span id="modal-area" class="font-bold text-slate-800"></span>
                     </div>
                 </div>
-
-                <div class="mt-auto space-y-3">
-                    <button class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2 transition-colors">
-                        <i data-lucide="message-circle" width="20"></i>
-                        Agendar Visita via WhatsApp
-                    </button>
-                    <button class="w-full bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold py-3 rounded-lg transition-colors">
-                        Solicitar Mais Fotos
-                    </button>
-                </div>
+                <button class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2">
+                    <i data-lucide="message-circle" width="20"></i> WhatsApp
+                </button>
             </div>
         </div>
     </div>
 
-    <!-- JAVASCRIPT LOGIC -->
-    <script>
-        // --- DATA ---
-        const PROPERTIES = [
-            {
-                id: 1,
-                title: "Apartamento de Alto Padrão",
-                location: "Jardins, São Paulo - SP",
-                price: 1250000,
-                type: "venda",
-                beds: 3,
-                baths: 2,
-                area: 120,
-                image: "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&q=80&w=800",
-                featured: true,
-                description: "Espetacular apartamento reformado, com vista livre, varanda gourmet e acabamentos de primeira linha. Condomínio com lazer completo."
-            },
-            {
-                id: 2,
-                title: "Casa em Condomínio Fechado",
-                location: "Alphaville, Barueri - SP",
-                price: 2800000,
-                type: "venda",
-                beds: 4,
-                baths: 5,
-                area: 350,
-                // Imagem Atualizada
-                image: "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&q=80&w=800",
-                featured: true,
-                description: "Casa moderna com piscina privativa, área gourmet integrada e automação residencial. Segurança 24h e muito verde."
-            },
-            {
-                id: 3,
-                title: "Studio Moderno Centro",
-                location: "Centro, Curitiba - PR",
-                price: 2500,
-                type: "aluguel",
-                beds: 1,
-                baths: 1,
-                area: 35,
-                image: "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&q=80&w=800",
-                featured: false,
-                description: "Studio mobiliado, pronto para morar. Localização privilegiada perto de universidades e transporte público."
-            },
-            {
-                id: 4,
-                title: "Cobertura Duplex",
-                location: "Leblon, Rio de Janeiro - RJ",
-                price: 4500000,
-                type: "venda",
-                beds: 3,
-                baths: 4,
-                area: 210,
-                image: "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&q=80&w=800",
-                featured: true,
-                description: "Vista mar deslumbrante. Cobertura com terraço amplo, jacuzzi e design exclusivo. Oportunidade única no bairro."
-            },
-            {
-                id: 5,
-                title: "Sobrado Familiar",
-                location: "Moema, São Paulo - SP",
-                price: 6500,
-                type: "aluguel",
-                beds: 3,
-                baths: 3,
-                area: 180,
-                // Imagem Atualizada
-                image: "https://images.unsplash.com/photo-1568605114967-8130f3a36994?auto=format&fit=crop&q=80&w=800",
-                featured: false,
-                description: "Sobrado espaçoso, ideal para famílias. Quintal com churrasqueira, quartos amplos e rua tranquila arborizada."
-            },
-            {
-                id: 6,
-                title: "Loft Industrial",
-                location: "Vila Madalena, São Paulo - SP",
-                price: 850000,
-                type: "venda",
-                beds: 1,
-                baths: 1,
-                area: 70,
-                image: "https://images.unsplash.com/photo-1505691938895-1758d7feb511?auto=format&fit=crop&q=80&w=800",
-                featured: false,
-                description: "Estilo industrial autêntico, pé direito duplo, muita luz natural. Próximo aos melhores bares e restaurantes."
-            }
-        ];
+    <!-- MODAL: ADMIN DASHBOARD (CRUD) -->
+    <div id="admin-panel-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
+        <div class="bg-white rounded-xl w-full max-w-5xl max-h-[90vh] flex flex-col shadow-2xl relative">
+            <!-- Header -->
+            <div class="bg-slate-900 text-white p-6 rounded-t-xl flex justify-between items-center">
+                <h2 class="text-xl font-bold flex items-center gap-2"><i data-lucide="settings" width="20"></i> Painel Administrativo</h2>
+                <div class="flex gap-4">
+                    <button onclick="openEditModal()" class="bg-green-500 hover:bg-green-600 px-4 py-2 rounded text-sm font-bold flex items-center gap-2">
+                        <i data-lucide="plus" width="16"></i> Novo Imóvel
+                    </button>
+                    <button onclick="toggleModal('admin-panel-modal', false)" class="hover:bg-slate-700 p-2 rounded"><i data-lucide="x" width="20"></i></button>
+                </div>
+            </div>
+            
+            <!-- List -->
+            <div class="p-6 overflow-y-auto modal-scroll bg-slate-50 flex-grow">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="text-slate-500 text-xs uppercase tracking-wider border-b border-slate-200">
+                            <th class="pb-3 pl-2">Imóvel</th>
+                            <th class="pb-3">Preço</th>
+                            <th class="pb-3">Tipo</th>
+                            <th class="pb-3 text-right pr-2">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="admin-list-body" class="text-sm">
+                        <!-- Items injected here -->
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Logout -->
+            <div class="p-4 border-t border-slate-200 bg-white rounded-b-xl flex justify-between items-center">
+                <span class="text-xs text-slate-500">Logado como Admin</span>
+                <button onclick="handleLogout()" class="text-red-500 hover:text-red-700 text-sm font-medium">Sair</button>
+            </div>
+        </div>
+    </div>
 
-        // --- STATE ---
+    <!-- MODAL: EDITAR/CRIAR IMÓVEL -->
+    <div id="admin-modal" class="fixed inset-0 z-[60] hidden flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+        <div class="bg-white rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto modal-scroll p-6 shadow-2xl relative">
+            <button onclick="toggleModal('admin-modal', false)" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600"><i data-lucide="x" width="20"></i></button>
+            <h3 id="form-title" class="text-xl font-bold text-slate-900 mb-6">Novo Imóvel</h3>
+            
+            <form id="property-form" onsubmit="handleFormSubmit(event)" class="space-y-4">
+                <input type="hidden" id="edit-id">
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="label-text">Título</label>
+                        <input type="text" name="title" required class="input-field" placeholder="Ex: Casa no Lago">
+                    </div>
+                    <div>
+                        <label class="label-text">Localização</label>
+                        <input type="text" name="location" required class="input-field" placeholder="Ex: Lago Sul - DF">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div class="col-span-2">
+                        <label class="label-text">Preço (R$)</label>
+                        <input type="number" name="price" required class="input-field" placeholder="0.00">
+                    </div>
+                    <div>
+                        <label class="label-text">Tipo</label>
+                        <select name="type" class="input-field">
+                            <option value="venda">Venda</option>
+                            <option value="aluguel">Aluguel</option>
+                        </select>
+                    </div>
+                    <div class="flex items-center pt-6">
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" name="featured" class="w-4 h-4 rounded text-blue-600">
+                            <span class="text-sm font-medium text-slate-700">Destaque?</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-3 gap-4">
+                    <div>
+                        <label class="label-text">Quartos</label>
+                        <input type="number" name="beds" required class="input-field">
+                    </div>
+                    <div>
+                        <label class="label-text">Banheiros</label>
+                        <input type="number" name="baths" required class="input-field">
+                    </div>
+                    <div>
+                        <label class="label-text">Área (m²)</label>
+                        <input type="number" name="area" required class="input-field">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="label-text">URL da Imagem</label>
+                    <input type="url" name="image" required class="input-field" placeholder="https://...">
+                    <p class="text-xs text-slate-400 mt-1">Use links do Unsplash ou hospedagem pública.</p>
+                </div>
+
+                <div>
+                    <label class="label-text">Descrição</label>
+                    <textarea name="description" rows="3" required class="input-field"></textarea>
+                </div>
+
+                <div class="pt-4">
+                    <button type="submit" class="w-full bg-blue-900 hover:bg-blue-800 text-white font-bold py-3 rounded-lg transition-colors">Salvar Imóvel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- TOAST NOTIFICATION -->
+    <div id="toast" class="fixed bottom-4 right-4 bg-slate-800 text-white px-6 py-3 rounded-lg shadow-lg transform translate-y-20 opacity-0 transition-all duration-300 z-[70]">
+        <span id="toast-msg">Mensagem</span>
+    </div>
+
+    <!-- STYLE HELPERS FOR FORM -->
+    <style>
+        .label-text { display: block; font-size: 0.75rem; font-weight: 700; color: #475569; text-transform: uppercase; margin-bottom: 0.25rem; }
+        .input-field { width: 100%; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 0.5rem; padding: 0.5rem 1rem; outline: none; transition: border-color 0.2s; }
+        .input-field:focus { border-color: #3b82f6; background: white; }
+    </style>
+
+    <!-- JAVASCRIPT UI LOGIC -->
+    <script>
+        // --- STATE & UTILS ---
         let currentFilter = 'todos';
         let currentSearch = '';
 
-        // --- UTILS ---
         const formatCurrency = (value, type) => {
-            return new Intl.NumberFormat('pt-BR', {
-                style: 'currency',
-                currency: 'BRL',
-                maximumFractionDigits: 0
-            }).format(value) + (type === 'aluguel' ? '/mês' : '');
+            return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(value) + (type === 'aluguel' ? '/mês' : '');
         };
 
-        // --- RENDER FUNCTIONS ---
+        function toggleModal(id, show) {
+            const el = document.getElementById(id);
+            if(show) el.classList.remove('hidden');
+            else el.classList.add('hidden');
+        }
+
+        function showToast(msg, type = 'info') {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-msg').textContent = msg;
+            toast.className = `fixed bottom-4 right-4 px-6 py-3 rounded-lg shadow-lg transform transition-all duration-300 z-[70] ${type === 'success' ? 'bg-green-600 text-white' : (type === 'error' ? 'bg-red-600 text-white' : 'bg-slate-800 text-white')}`;
+            
+            // Show
+            setTimeout(() => { toast.classList.remove('translate-y-20', 'opacity-0'); }, 10);
+            // Hide
+            setTimeout(() => { toast.classList.add('translate-y-20', 'opacity-0'); }, 3000);
+        }
+
+        // --- RENDER MAIN LIST ---
         function renderProperties() {
+            const properties = window.getProperties(); // Get from Module scope
             const grid = document.getElementById('properties-grid');
             const emptyState = document.getElementById('empty-state');
             
-            // Filter logic
-            const filtered = PROPERTIES.filter(p => {
+            // Filter
+            const filtered = properties.filter(p => {
                 const matchesType = currentFilter === 'todos' ? true : p.type === currentFilter;
-                const matchesSearch = p.title.toLowerCase().includes(currentSearch.toLowerCase()) || 
-                                      p.location.toLowerCase().includes(currentSearch.toLowerCase());
+                const matchesSearch = (p.title || '').toLowerCase().includes(currentSearch.toLowerCase()) || 
+                                      (p.location || '').toLowerCase().includes(currentSearch.toLowerCase());
                 return matchesType && matchesSearch;
             });
 
-            // Clear grid
             grid.innerHTML = '';
 
             if (filtered.length === 0) {
                 emptyState.classList.remove('hidden');
             } else {
                 emptyState.classList.add('hidden');
-                
                 filtered.forEach(property => {
                     const badgeColor = property.type === 'venda' ? 'bg-blue-600 text-white' : 'bg-emerald-500 text-white';
-                    const featuredBadge = property.featured ? 
-                        `<span class="px-2 py-1 text-xs font-bold uppercase tracking-wide rounded bg-amber-500 text-white">Destaque</span>` : '';
+                    const featuredBadge = property.featured ? `<span class="px-2 py-1 text-xs font-bold uppercase tracking-wide rounded bg-amber-500 text-white">Destaque</span>` : '';
+                    
+                    const card = document.createElement('div');
+                    card.className = "group bg-white rounded-xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden border border-slate-100 cursor-pointer flex flex-col h-full relative";
+                    card.onclick = (e) => {
+                        // Prevent opening modal if clicking admin buttons (future proofing)
+                        if(!e.target.closest('.admin-btn')) openPropertyModal(property);
+                    };
 
-                    const cardHTML = `
-                        <div class="group bg-white rounded-xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden border border-slate-100 cursor-pointer flex flex-col h-full" onclick="openModal(${property.id})">
-                            <div class="relative h-56 overflow-hidden">
-                                <img src="${property.image}" alt="${property.title}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"/>
-                                <div class="absolute top-3 left-3 flex gap-2">
-                                    <span class="px-2 py-1 text-xs font-bold uppercase tracking-wide rounded ${badgeColor}">${property.type}</span>
-                                    ${featuredBadge}
-                                </div>
-                                <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-4">
-                                    <p class="text-white font-bold text-xl">${formatCurrency(property.price, property.type)}</p>
-                                </div>
+                    card.innerHTML = `
+                        <div class="relative h-56 overflow-hidden">
+                            <img src="${property.image}" alt="${property.title}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" onerror="this.src='https://via.placeholder.com/800x600?text=Sem+Imagem'"/>
+                            <div class="absolute top-3 left-3 flex gap-2">
+                                <span class="px-2 py-1 text-xs font-bold uppercase tracking-wide rounded ${badgeColor}">${property.type}</span>
+                                ${featuredBadge}
                             </div>
-                            
-                            <div class="p-5 flex flex-col flex-grow">
-                                <h3 class="text-lg font-bold text-slate-800 mb-1 group-hover:text-blue-700 transition-colors">${property.title}</h3>
-                                <div class="flex items-center text-slate-500 text-sm mb-4">
-                                    <i data-lucide="map-pin" width="16" class="mr-1 text-amber-500"></i>
-                                    ${property.location}
-                                </div>
-                                
-                                <div class="flex items-center justify-between mt-auto py-4 border-t border-slate-100 text-slate-600 text-sm">
-                                    <div class="flex items-center gap-1">
-                                        <i data-lucide="bed" width="18" class="text-blue-600"></i>
-                                        <span>${property.beds}</span>
-                                    </div>
-                                    <div class="flex items-center gap-1">
-                                        <i data-lucide="bath" width="18" class="text-blue-600"></i>
-                                        <span>${property.baths}</span>
-                                    </div>
-                                    <div class="flex items-center gap-1">
-                                        <i data-lucide="square" width="18" class="text-blue-600"></i>
-                                        <span>${property.area}m²</span>
-                                    </div>
-                                </div>
-
-                                <button class="w-full mt-2 py-2 text-blue-700 font-semibold text-sm border border-blue-100 rounded hover:bg-blue-50 transition-colors">
-                                    Ver Detalhes
-                                </button>
+                            <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-4">
+                                <p class="text-white font-bold text-xl">${formatCurrency(property.price, property.type)}</p>
                             </div>
                         </div>
+                        <div class="p-5 flex flex-col flex-grow">
+                            <h3 class="text-lg font-bold text-slate-800 mb-1 group-hover:text-blue-700 transition-colors">${property.title}</h3>
+                            <div class="flex items-center text-slate-500 text-sm mb-4">
+                                <i data-lucide="map-pin" width="16" class="mr-1 text-amber-500"></i> ${property.location}
+                            </div>
+                            <div class="flex items-center justify-between mt-auto py-4 border-t border-slate-100 text-slate-600 text-sm">
+                                <span class="flex items-center gap-1"><i data-lucide="bed" width="16" class="text-blue-600"></i> ${property.beds}</span>
+                                <span class="flex items-center gap-1"><i data-lucide="bath" width="16" class="text-blue-600"></i> ${property.baths}</span>
+                                <span class="flex items-center gap-1"><i data-lucide="square" width="16" class="text-blue-600"></i> ${property.area}m²</span>
+                            </div>
+                            <button class="w-full mt-2 py-2 text-blue-700 font-semibold text-sm border border-blue-100 rounded hover:bg-blue-50 transition-colors">Ver Detalhes</button>
+                        </div>
                     `;
-                    grid.insertAdjacentHTML('beforeend', cardHTML);
+                    grid.appendChild(card);
                 });
             }
-            
-            // Re-initialize icons for new elements
             lucide.createIcons();
         }
 
-        // --- EVENT HANDLERS ---
-        
-        // Filter Buttons
-        document.querySelectorAll('.filter-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                // Update state
-                currentFilter = e.target.getAttribute('data-filter');
-                
-                // Update UI classes
-                document.querySelectorAll('.filter-btn').forEach(b => {
-                    b.classList.remove('bg-blue-900', 'text-white', 'shadow');
-                    b.classList.add('text-slate-500', 'hover:text-blue-900');
-                });
-                e.target.classList.remove('text-slate-500', 'hover:text-blue-900');
-                e.target.classList.add('bg-blue-900', 'text-white', 'shadow');
-                
-                // Sync select input if necessary
-                document.getElementById('hero-filter-select').value = currentFilter;
-
-                renderProperties();
-            });
-        });
-
-        // Hero Select Filter
-        document.getElementById('hero-filter-select').addEventListener('change', (e) => {
-            currentFilter = e.target.value;
-            // Trigger click on corresponding button to sync UI
-            document.querySelector(`.filter-btn[data-filter="${currentFilter}"]`).click();
-        });
-
-        // Search Input
-        document.getElementById('search-input').addEventListener('input', (e) => {
-            currentSearch = e.target.value;
-            renderProperties();
-        });
-
-        // Mobile Menu
-        const menuBtn = document.getElementById('mobile-menu-btn');
-        const mobileMenu = document.getElementById('mobile-menu');
-        const menuIcon = document.getElementById('menu-icon');
-        let isMenuOpen = false;
-
-        menuBtn.addEventListener('click', () => {
-            isMenuOpen = !isMenuOpen;
-            if (isMenuOpen) {
-                mobileMenu.classList.remove('hidden');
-                // Change icon to X is manually handled or just kept as menu for simplicity in vanilla
-                // To properly change icon we need to clear innerHTML and re-render lucide icon
-                menuBtn.innerHTML = `<i data-lucide="x" width="28"></i>`;
-            } else {
-                mobileMenu.classList.add('hidden');
-                menuBtn.innerHTML = `<i data-lucide="menu" width="28"></i>`;
-            }
-            lucide.createIcons();
-        });
-
-        // Close mobile menu on link click
-        document.querySelectorAll('.mobile-link').forEach(link => {
-            link.addEventListener('click', () => {
-                isMenuOpen = false;
-                mobileMenu.classList.add('hidden');
-                menuBtn.innerHTML = `<i data-lucide="menu" width="28"></i>`;
-                lucide.createIcons();
-            });
-        });
-
-        // Contact Form
-        document.getElementById('contact-form').addEventListener('submit', (e) => {
-            e.preventDefault();
-            const name = document.getElementById('form-name').value;
-            alert(`Obrigado, ${name}! Recebemos seu interesse. Em breve um corretor entrará em contato.`);
-            e.target.reset();
-        });
-
-        // Modal Logic
-        const modal = document.getElementById('property-modal');
-        
-        window.openModal = (id) => {
-            const property = PROPERTIES.find(p => p.id === id);
-            if (!property) return;
-
-            // Populate Data
+        function openPropertyModal(property) {
             document.getElementById('modal-image').src = property.image;
             document.getElementById('modal-title').textContent = property.title;
             document.getElementById('modal-description').textContent = property.description;
@@ -587,57 +614,168 @@
             document.getElementById('modal-beds').textContent = property.beds;
             document.getElementById('modal-baths').textContent = property.baths;
             document.getElementById('modal-area').textContent = property.area + 'm²';
-
-            // Badge styling
+            
             const badge = document.getElementById('modal-badge');
             badge.textContent = property.type;
-            badge.className = `px-2 py-1 text-xs font-bold uppercase tracking-wide rounded ${
-                property.type === 'venda' ? 'bg-blue-100 text-blue-800' : 'bg-emerald-100 text-emerald-800'
-            }`;
+            badge.className = `px-2 py-1 text-xs font-bold uppercase tracking-wide rounded ${property.type === 'venda' ? 'bg-blue-100 text-blue-800' : 'bg-emerald-100 text-emerald-800'}`;
+            
+            toggleModal('property-modal', true);
+        }
 
-            // Show Modal
-            modal.classList.remove('hidden');
-        };
-
-        document.getElementById('close-modal-btn').addEventListener('click', () => {
-            modal.classList.add('hidden');
-        });
-
-        // Close modal on outside click
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal) {
-                modal.classList.add('hidden');
-            }
-        });
-
-        // Initialize
-        document.addEventListener('DOMContentLoaded', () => {
-            renderProperties();
-            lucide.createIcons();
-        });
-
-        // Import the functions you need from the SDKs you need
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
-  import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-analytics.js";
-  // TODO: Add SDKs for Firebase products that you want to use
-  // https://firebase.google.com/docs/web/setup#available-libraries
-
-  // Your web app's Firebase configuration
-  // For Firebase JS SDK v7.20.0 and later, measurementId is optional
-  const firebaseConfig = {
-    apiKey: "AIzaSyDEPXe6IU8Q58xAaJTGT0FFSFEte_zppY8",
-    authDomain: "prime-house-fa7b0.firebaseapp.com",
-    projectId: "prime-house-fa7b0",
-    storageBucket: "prime-house-fa7b0.firebasestorage.app",
-    messagingSenderId: "58174312256",
-    appId: "1:58174312256:web:a23faa5f5f69dbeb7c34a5",
-    measurementId: "G-YRN20D8ZFX"
-  };
-
-  // Initialize Firebase
-  const app = initializeApp(firebaseConfig);
-  const analytics = getAnalytics(app);
+        // --- AUTH & ADMIN UI ---
         
+        function openLoginModal() {
+            if(window.isAdminUser()) {
+                openAdminPanel(); // Already logged in
+            } else {
+                toggleModal('login-modal', true);
+            }
+        }
+
+        function handleLogin(e) {
+            e.preventDefault();
+            const pass = document.getElementById('login-password').value;
+            // Simulação de segurança (No real, usar Firebase Auth SignInWithEmail)
+            if (pass === 'admin123') {
+                window.setAdminStatus(true);
+                toggleModal('login-modal', false);
+                showToast("Bem-vindo, Admin!", "success");
+                document.body.classList.add('is-admin');
+                openAdminPanel();
+            } else {
+                showToast("Senha incorreta.", "error");
+            }
+        }
+
+        function handleLogout() {
+            window.setAdminStatus(false);
+            document.body.classList.remove('is-admin');
+            toggleModal('admin-panel-modal', false);
+            showToast("Logout realizado.");
+        }
+
+        function updateAdminUI() {
+            const btn = document.getElementById('admin-panel-btn');
+            if (window.isAdminUser()) btn.classList.remove('hidden');
+            else btn.classList.add('hidden');
+        }
+
+        function openAdminPanel() {
+            updateAdminList();
+            toggleModal('admin-panel-modal', true);
+        }
+
+        function updateAdminList() {
+            const list = document.getElementById('admin-list-body');
+            const properties = window.getProperties();
+            list.innerHTML = '';
+
+            properties.forEach(p => {
+                const tr = document.createElement('tr');
+                tr.className = "border-b border-slate-200 hover:bg-slate-100 transition-colors";
+                tr.innerHTML = `
+                    <td class="py-3 pl-2 font-medium text-slate-700">${p.title}</td>
+                    <td class="py-3 text-slate-500">${formatCurrency(p.price, p.type)}</td>
+                    <td class="py-3"><span class="text-xs font-bold uppercase bg-slate-200 text-slate-600 px-2 py-1 rounded">${p.type}</span></td>
+                    <td class="py-3 pr-2 text-right gap-2">
+                        <button onclick='openEditModal("${p.id}")' class="text-blue-600 hover:text-blue-800 mr-3 font-medium text-xs">Editar</button>
+                        <button onclick='window.deletePropertyFromDb("${p.id}")' class="text-red-500 hover:text-red-700 font-medium text-xs">Excluir</button>
+                    </td>
+                `;
+                list.appendChild(tr);
+            });
+            lucide.createIcons();
+        }
+
+        // --- FORM HANDLING (CREATE/UPDATE) ---
+        
+        function openEditModal(id = null) {
+            const form = document.getElementById('property-form');
+            const title = document.getElementById('form-title');
+            
+            if (id) {
+                // Edit Mode
+                const p = window.getProperties().find(i => i.id === id);
+                if (!p) return;
+                
+                document.getElementById('edit-id').value = id;
+                title.textContent = "Editar Imóvel";
+                
+                // Populate fields
+                form.elements['title'].value = p.title;
+                form.elements['location'].value = p.location;
+                form.elements['price'].value = p.price;
+                form.elements['type'].value = p.type;
+                form.elements['beds'].value = p.beds;
+                form.elements['baths'].value = p.baths;
+                form.elements['area'].value = p.area;
+                form.elements['image'].value = p.image;
+                form.elements['description'].value = p.description;
+                form.elements['featured'].checked = p.featured;
+            } else {
+                // Create Mode
+                document.getElementById('edit-id').value = "";
+                title.textContent = "Novo Imóvel";
+                form.reset();
+            }
+            toggleModal('admin-modal', true);
+        }
+
+        function handleFormSubmit(e) {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const data = {
+                title: formData.get('title'),
+                location: formData.get('location'),
+                price: Number(formData.get('price')),
+                type: formData.get('type'),
+                beds: Number(formData.get('beds')),
+                baths: Number(formData.get('baths')),
+                area: Number(formData.get('area')),
+                image: formData.get('image'),
+                description: formData.get('description'),
+                featured: formData.get('featured') === 'on'
+            };
+
+            const id = document.getElementById('edit-id').value;
+            
+            if (id) {
+                window.updatePropertyInDb(id, data);
+            } else {
+                window.addPropertyToDb(data);
+            }
+        }
+
+        // Listeners básicos
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                currentFilter = e.target.getAttribute('data-filter');
+                document.querySelectorAll('.filter-btn').forEach(b => {
+                    b.classList.remove('bg-blue-900', 'text-white', 'shadow');
+                    b.classList.add('text-slate-500', 'hover:text-blue-900');
+                });
+                e.target.classList.remove('text-slate-500', 'hover:text-blue-900');
+                e.target.classList.add('bg-blue-900', 'text-white', 'shadow');
+                document.getElementById('hero-filter-select').value = currentFilter;
+                renderProperties();
+            });
+        });
+
+        document.getElementById('hero-filter-select').addEventListener('change', (e) => {
+            currentFilter = e.target.value;
+            const btn = document.querySelector(`.filter-btn[data-filter="${currentFilter}"]`);
+            if(btn) btn.click();
+        });
+
+        document.getElementById('search-input').addEventListener('input', (e) => {
+            currentSearch = e.target.value;
+            renderProperties();
+        });
+
+        // Toggle mobile menu
+        document.getElementById('mobile-menu-btn').addEventListener('click', () => {
+            document.getElementById('mobile-menu').classList.toggle('hidden');
+        });
     </script>
 </body>
 </html>
