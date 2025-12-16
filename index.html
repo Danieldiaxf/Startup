@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Prime House - Imobiliária</title>
     
-    <!-- Favicon Moderno: Ícone Minimalista (Fundo Azul, Teto Branco, Ponto Âmbar) -->
+    <!-- Favicon Moderno -->
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect x='0' y='0' width='64' height='64' rx='16' fill='%231e3a8a'/%3E%3Cpath d='M14 34L32 16L50 34' fill='none' stroke='white' stroke-width='6' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='32' cy='48' r='7' fill='%23f59e0b'/%3E%3C/svg%3E">
 
     <script src="https://cdn.tailwindcss.com"></script>
@@ -172,7 +172,6 @@
                     baths: Number(formData.get('baths')),
                     garages: Number(formData.get('garages') || 0),
                     area: Number(formData.get('area')),
-                    // Novos campos salvos no DB
                     iptu: Number(formData.get('iptu') || 0),
                     condo: Number(formData.get('condo') || 0),
                     image: mainImageUrl,
@@ -306,11 +305,15 @@
 
         .zoom-img {
             transition: transform 0.3s ease;
-            cursor: zoom-in;
+            cursor: pointer; /* Alterado de zoom-in para pointer */
         }
-        .zoom-img:active {
-            transform: scale(1.5);
-            z-index: 50;
+        .zoom-img:hover {
+            transform: scale(1.05); /* Efeito suave no hover */
+        }
+        
+        /* Previne scroll no body quando modal está aberto */
+        body.modal-open {
+            overflow: hidden;
         }
     </style>
 </head>
@@ -323,8 +326,6 @@
                     <i data-lucide="home" width="24" height="24"></i>
                 </div>
                 <div>
-                    <!-- Logo Atualizado: PRIME (Preto) HOUSE (Azul Escuro) -->
-                    <!-- Alterado de text-2xl para text-3xl -->
                     <h1 class="text-3xl font-extrabold leading-none tracking-tight">
                         <span class="text-black">PRIME</span> <span class="text-blue-900">HOUSE</span>
                     </h1>
@@ -521,6 +522,7 @@
         </div>
     </div>
 
+    <!-- Modal Detalhes do Imóvel -->
     <div id="property-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
         <div class="bg-white rounded-2xl w-full max-w-5xl max-h-[90vh] overflow-y-auto modal-scroll relative shadow-2xl">
             <button onclick="toggleModal('property-modal', false)" class="absolute top-4 right-4 z-20 bg-white/80 p-2 rounded-full hover:bg-white text-slate-800 transition-colors shadow-md">
@@ -529,7 +531,7 @@
             
             <div class="flex flex-col md:flex-row">
                 <div class="md:w-1/2 relative h-64 md:h-auto min-h-[300px]">
-                    <img id="modal-image" src="" alt="" class="w-full h-full object-cover absolute inset-0"/>
+                    <img id="modal-image" src="" alt="" class="w-full h-full object-cover absolute inset-0 cursor-pointer" onclick="openLightboxFromMain()"/>
                     <div class="absolute bottom-4 left-4 bg-white/90 backdrop-blur px-4 py-2 rounded-lg shadow-lg">
                         <p class="text-xs text-slate-500 uppercase tracking-wide">Valor</p>
                         <p id="modal-price" class="text-2xl font-bold text-blue-900"></p>
@@ -546,7 +548,6 @@
                         <p id="modal-description" class="text-slate-600 leading-relaxed text-sm"></p>
                     </div>
                     
-                    <!-- Grid ajustado para 6 itens -->
                     <div class="grid grid-cols-3 md:grid-cols-6 gap-2 mb-8">
                         <div class="text-center p-2 bg-slate-50 rounded-lg border border-slate-100 flex flex-col items-center justify-center h-full">
                             <i data-lucide="bed" width="18" class="text-blue-600 mb-1"></i>
@@ -594,6 +595,32 @@
                 </div>
             </div>
 
+        </div>
+    </div>
+
+    <!-- LIGHTBOX MODAL (Nova Funcionalidade) -->
+    <div id="lightbox-modal" class="fixed inset-0 z-[80] hidden bg-black/95 flex items-center justify-center backdrop-blur-md animate-fade-in">
+        <!-- Botão Fechar -->
+        <button onclick="closeLightbox()" class="absolute top-4 right-4 text-white/70 hover:text-white transition-colors z-[90] p-2">
+            <i data-lucide="x" width="32" height="32"></i>
+        </button>
+
+        <!-- Botão Anterior -->
+        <button onclick="navigateLightbox(-1)" class="absolute left-2 md:left-8 text-white/70 hover:text-white transition-colors z-[90] bg-black/20 hover:bg-black/50 p-2 rounded-full">
+            <i data-lucide="chevron-left" width="40" height="40"></i>
+        </button>
+
+        <!-- Imagem -->
+        <img id="lightbox-img" src="" class="max-h-[90vh] max-w-[90vw] object-contain shadow-2xl rounded-sm select-none" alt="Galeria">
+
+        <!-- Botão Próximo -->
+        <button onclick="navigateLightbox(1)" class="absolute right-2 md:right-8 text-white/70 hover:text-white transition-colors z-[90] bg-black/20 hover:bg-black/50 p-2 rounded-full">
+            <i data-lucide="chevron-right" width="40" height="40"></i>
+        </button>
+
+        <!-- Contador -->
+        <div class="absolute bottom-6 left-1/2 -translate-x-1/2 text-white/80 text-sm font-medium bg-black/50 px-4 py-1 rounded-full">
+            <span id="lightbox-counter"></span>
         </div>
     </div>
 
@@ -670,7 +697,6 @@
                     </div>
                 </div>
 
-                <!-- Grid de características ajustado para incluir IPTU e Condomínio -->
                 <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
                     <div>
                         <label class="label-text">Quartos</label>
@@ -743,12 +769,64 @@
     <script>
         let currentFilter = 'todos';
         let currentSearch = '';
+        
+        // --- LÓGICA DO LIGHTBOX (VISUALIZADOR) ---
+        let lightboxImages = [];
+        let lightboxIndex = 0;
+
+        function openLightbox(index, imagesArray) {
+            if (!imagesArray || imagesArray.length === 0) return;
+            
+            lightboxImages = imagesArray;
+            lightboxIndex = index;
+            
+            updateLightboxUI();
+            
+            const modal = document.getElementById('lightbox-modal');
+            modal.classList.remove('hidden');
+            
+            // Adiciona listener para teclado
+            document.addEventListener('keydown', handleLightboxKeys);
+        }
+
+        function closeLightbox() {
+            const modal = document.getElementById('lightbox-modal');
+            modal.classList.add('hidden');
+            document.removeEventListener('keydown', handleLightboxKeys);
+        }
+
+        function navigateLightbox(step) {
+            lightboxIndex += step;
+            
+            // Loop infinito
+            if (lightboxIndex >= lightboxImages.length) {
+                lightboxIndex = 0;
+            } else if (lightboxIndex < 0) {
+                lightboxIndex = lightboxImages.length - 1;
+            }
+            
+            updateLightboxUI();
+        }
+
+        function updateLightboxUI() {
+            const imgEl = document.getElementById('lightbox-img');
+            const counterEl = document.getElementById('lightbox-counter');
+            
+            imgEl.src = lightboxImages[lightboxIndex];
+            counterEl.textContent = `${lightboxIndex + 1} / ${lightboxImages.length}`;
+        }
+
+        function handleLightboxKeys(e) {
+            if (e.key === 'Escape') closeLightbox();
+            if (e.key === 'ArrowRight') navigateLightbox(1);
+            if (e.key === 'ArrowLeft') navigateLightbox(-1);
+        }
+        // --- FIM LÓGICA LIGHTBOX ---
 
         const formatCurrency = (value, type) => {
             return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(value) + (type === 'aluguel' ? '/mês' : '');
         };
         
-        // Helper simples para IPTU e Condomínio (sem o sufixo /mês)
         const formatMoney = (value) => {
             return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(value);
         };
@@ -762,8 +840,13 @@
 
         function toggleModal(id, show) {
             const el = document.getElementById(id);
-            if(show) el.classList.remove('hidden');
-            else el.classList.add('hidden');
+            if(show) {
+                el.classList.remove('hidden');
+                document.body.classList.add('modal-open');
+            } else {
+                el.classList.add('hidden');
+                document.body.classList.remove('modal-open');
+            }
         }
 
         function showToast(msg, type = 'info') {
@@ -841,7 +924,11 @@
             lucide.createIcons();
         }
 
+        // Variável global para armazenar a propriedade aberta atualmente
+        let currentOpenProperty = null;
+
         function openPropertyModal(property) {
+            currentOpenProperty = property;
             document.getElementById('modal-image').src = property.image;
             document.getElementById('modal-title').textContent = property.title;
             document.getElementById('modal-description').textContent = property.description;
@@ -869,12 +956,18 @@
             
             if (property.gallery && property.gallery.length > 0) {
                 gallerySection.classList.remove('hidden');
-                property.gallery.forEach(imgUrl => {
+                
+                // Cria um array completo para o lightbox contendo a imagem principal + galeria
+                const fullGalleryList = [property.image, ...property.gallery];
+
+                property.gallery.forEach((imgUrl, index) => {
                     const imgContainer = document.createElement('div');
                     imgContainer.className = "rounded-lg overflow-hidden h-32 md:h-40 border border-slate-200 shadow-sm relative group cursor-pointer";
                     
+                    // ALTERADO: Ao clicar, abre o Lightbox no índice correto
+                    // O índice no fullGalleryList é (index + 1) porque a posição 0 é a capa
                     imgContainer.onclick = () => {
-                          document.getElementById('modal-image').src = imgUrl;
+                          openLightbox(index + 1, fullGalleryList);
                     };
                     
                     const img = document.createElement('img');
@@ -884,7 +977,7 @@
                     
                     const icon = document.createElement('div');
                     icon.className = "absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100";
-                    icon.innerHTML = `<i data-lucide="eye" class="text-white"></i>`;
+                    icon.innerHTML = `<i data-lucide="maximize-2" class="text-white"></i>`; // Ícone de expandir
                     
                     imgContainer.appendChild(img);
                     imgContainer.appendChild(icon);
@@ -897,6 +990,16 @@
 
             toggleModal('property-modal', true);
         }
+
+        // Função auxiliar para abrir o lightbox clicando na imagem principal do modal
+        window.openLightboxFromMain = () => {
+            if (currentOpenProperty) {
+                 const fullGalleryList = currentOpenProperty.gallery && currentOpenProperty.gallery.length > 0 
+                    ? [currentOpenProperty.image, ...currentOpenProperty.gallery]
+                    : [currentOpenProperty.image];
+                openLightbox(0, fullGalleryList);
+            }
+        };
 
         function openLoginModal() {
             if(window.isAdminUser()) {
