@@ -172,6 +172,9 @@
                     baths: Number(formData.get('baths')),
                     garages: Number(formData.get('garages') || 0),
                     area: Number(formData.get('area')),
+                    // Novos campos salvos no DB
+                    iptu: Number(formData.get('iptu') || 0),
+                    condo: Number(formData.get('condo') || 0),
                     image: mainImageUrl,
                     gallery: finalGallery,
                     description: formData.get('description'),
@@ -321,7 +324,8 @@
                 </div>
                 <div>
                     <!-- Logo Atualizado: PRIME (Preto) HOUSE (Azul Escuro) -->
-                    <h1 class="text-2xl font-extrabold leading-none tracking-tight">
+                    <!-- Alterado de text-2xl para text-3xl -->
+                    <h1 class="text-3xl font-extrabold leading-none tracking-tight">
                         <span class="text-black">PRIME</span> <span class="text-blue-900">HOUSE</span>
                     </h1>
                     <p class="text-[10px] text-slate-500 tracking-[0.2em] uppercase font-semibold pl-0.5">IMOBILIÁRIA</p>
@@ -370,7 +374,7 @@
         <div class="container mx-auto px-4 relative z-10 text-center">
             <span class="text-amber-400 font-bold tracking-widest uppercase text-sm mb-4 block animate-fade-in">Sua imobiliária de confiança</span>
             <h2 class="text-4xl md:text-6xl font-bold text-white mb-6 leading-tight max-w-4xl mx-auto">
-                A imobiliária mais pica de BSB!!.
+                Encontre o imóvel perfeito para sua nova história.
             </h2>
             
             <div class="bg-white p-2 rounded-lg shadow-2xl max-w-3xl mx-auto flex flex-col md:flex-row gap-2">
@@ -542,22 +546,37 @@
                         <p id="modal-description" class="text-slate-600 leading-relaxed text-sm"></p>
                     </div>
                     
-                    <div class="grid grid-cols-4 gap-4 mb-8">
-                        <div class="text-center p-3 bg-slate-50 rounded-lg border border-slate-100">
-                            <i data-lucide="bed" width="20" class="mx-auto text-blue-600 mb-1"></i>
-                            <span id="modal-beds" class="font-bold text-slate-800"></span>
+                    <!-- Grid ajustado para 6 itens -->
+                    <div class="grid grid-cols-3 md:grid-cols-6 gap-2 mb-8">
+                        <div class="text-center p-2 bg-slate-50 rounded-lg border border-slate-100 flex flex-col items-center justify-center h-full">
+                            <i data-lucide="bed" width="18" class="text-blue-600 mb-1"></i>
+                            <span id="modal-beds" class="font-bold text-slate-800 text-sm"></span>
+                            <span class="text-[10px] text-slate-400">Quartos</span>
                         </div>
-                        <div class="text-center p-3 bg-slate-50 rounded-lg border border-slate-100">
-                            <i data-lucide="bath" width="20" class="mx-auto text-blue-600 mb-1"></i>
-                            <span id="modal-baths" class="font-bold text-slate-800"></span>
+                        <div class="text-center p-2 bg-slate-50 rounded-lg border border-slate-100 flex flex-col items-center justify-center h-full">
+                            <i data-lucide="bath" width="18" class="text-blue-600 mb-1"></i>
+                            <span id="modal-baths" class="font-bold text-slate-800 text-sm"></span>
+                            <span class="text-[10px] text-slate-400">Banheiros</span>
                         </div>
-                        <div class="text-center p-3 bg-slate-50 rounded-lg border border-slate-100">
-                            <i data-lucide="car" width="20" class="mx-auto text-blue-600 mb-1"></i>
-                            <span id="modal-garages" class="font-bold text-slate-800"></span>
+                        <div class="text-center p-2 bg-slate-50 rounded-lg border border-slate-100 flex flex-col items-center justify-center h-full">
+                            <i data-lucide="car" width="18" class="text-blue-600 mb-1"></i>
+                            <span id="modal-garages" class="font-bold text-slate-800 text-sm"></span>
+                            <span class="text-[10px] text-slate-400">Vagas</span>
                         </div>
-                        <div class="text-center p-3 bg-slate-50 rounded-lg border border-slate-100">
-                            <i data-lucide="square" width="20" class="mx-auto text-blue-600 mb-1"></i>
-                            <span id="modal-area" class="font-bold text-slate-800"></span>
+                        <div class="text-center p-2 bg-slate-50 rounded-lg border border-slate-100 flex flex-col items-center justify-center h-full">
+                            <i data-lucide="square" width="18" class="text-blue-600 mb-1"></i>
+                            <span id="modal-area" class="font-bold text-slate-800 text-sm"></span>
+                            <span class="text-[10px] text-slate-400">Área</span>
+                        </div>
+                        <div class="text-center p-2 bg-slate-50 rounded-lg border border-slate-100 flex flex-col items-center justify-center h-full">
+                            <i data-lucide="file-text" width="18" class="text-blue-600 mb-1"></i>
+                            <span id="modal-iptu" class="font-bold text-slate-800 text-xs"></span>
+                            <span class="text-[10px] text-slate-400">IPTU</span>
+                        </div>
+                        <div class="text-center p-2 bg-slate-50 rounded-lg border border-slate-100 flex flex-col items-center justify-center h-full">
+                            <i data-lucide="building" width="18" class="text-blue-600 mb-1"></i>
+                            <span id="modal-condo" class="font-bold text-slate-800 text-xs"></span>
+                            <span class="text-[10px] text-slate-400">Condomínio</span>
                         </div>
                     </div>
 
@@ -651,7 +670,8 @@
                     </div>
                 </div>
 
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <!-- Grid de características ajustado para incluir IPTU e Condomínio -->
+                <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
                     <div>
                         <label class="label-text">Quartos</label>
                         <input type="number" name="beds" required class="input-field">
@@ -667,6 +687,14 @@
                     <div>
                         <label class="label-text">Área (m²)</label>
                         <input type="number" name="area" required class="input-field">
+                    </div>
+                    <div>
+                        <label class="label-text">IPTU (R$)</label>
+                        <input type="number" name="iptu" class="input-field" placeholder="0.00">
+                    </div>
+                    <div>
+                        <label class="label-text">Condomínio (R$)</label>
+                        <input type="number" name="condo" class="input-field" placeholder="0.00">
                     </div>
                 </div>
 
@@ -718,6 +746,11 @@
 
         const formatCurrency = (value, type) => {
             return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(value) + (type === 'aluguel' ? '/mês' : '');
+        };
+        
+        // Helper simples para IPTU e Condomínio (sem o sufixo /mês)
+        const formatMoney = (value) => {
+            return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(value);
         };
 
         const normalizeText = (text) => {
@@ -814,10 +847,16 @@
             document.getElementById('modal-description').textContent = property.description;
             document.getElementById('modal-price').textContent = formatCurrency(property.price, property.type);
             document.getElementById('modal-location').textContent = property.location;
+            
+            // Dados Básicos
             document.getElementById('modal-beds').textContent = property.beds;
             document.getElementById('modal-baths').textContent = property.baths;
             document.getElementById('modal-garages').textContent = property.garages || 0;
             document.getElementById('modal-area').textContent = property.area + 'm²';
+            
+            // Novos Dados (IPTU e Condomínio)
+            document.getElementById('modal-iptu').textContent = formatMoney(property.iptu || 0);
+            document.getElementById('modal-condo').textContent = formatMoney(property.condo || 0);
             
             const badge = document.getElementById('modal-badge');
             badge.textContent = property.type;
@@ -924,6 +963,9 @@
                 form.elements['baths'].value = p.baths;
                 form.elements['garages'].value = p.garages || 0;
                 form.elements['area'].value = p.area;
+                // Preencher novos campos
+                form.elements['iptu'].value = p.iptu || 0;
+                form.elements['condo'].value = p.condo || 0;
                 
                 document.getElementById('image-url-input').value = p.image;
                 if (p.image && p.image.length > 50) {
