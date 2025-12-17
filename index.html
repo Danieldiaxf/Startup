@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Prime House - Imobiliária</title>
@@ -10,8 +9,10 @@
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect x='0' y='0' width='64' height='64' rx='16' fill='%2318181b'/%3E%3Cpath d='M14 34L32 16L50 34' fill='none' stroke='white' stroke-width='6' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='32' cy='48' r='7' fill='%2310b981'/%3E%3C/svg%3E">
 
     <script src="https://cdn.tailwindcss.com"></script>
-    
     <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- EmailJS SDK -->
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
@@ -464,14 +465,19 @@
             </div>
             <div class="md:w-1/2 bg-white/5 backdrop-blur-sm p-8 rounded-2xl border border-white/10 w-full">
                 <h3 class="text-2xl font-bold mb-2">Fale Conosco</h3>
-                <p class="text-zinc-400 mb-6 text-sm">Preencha o formulário e entraremos em contato hoje mesmo.</p>
+                <p class="text-zinc-400 mb-6 text-sm">Preencha o formulário e entraremos em contato.</p>
+                
                 <form id="contact-form" class="space-y-4">
-                    <input type="text" id="form-name" placeholder="Seu Nome" required class="w-full bg-zinc-800/50 border border-zinc-700 rounded-lg px-4 py-3 text-white placeholder-zinc-500 focus:outline-none focus:border-emerald-500 transition-colors"/>
+                    <input type="text" id="form-name" name="name" placeholder="Seu Nome" required class="w-full bg-zinc-800/50 border border-zinc-700 rounded-lg px-4 py-3 text-white placeholder-zinc-500 focus:outline-none focus:border-emerald-500 transition-colors"/>
+                    
+                    <!-- NOVO CAMPO: EMAIL -->
+                    <input type="email" id="form-email" name="email" placeholder="Seu Email" required class="w-full bg-zinc-800/50 border border-zinc-700 rounded-lg px-4 py-3 text-white placeholder-zinc-500 focus:outline-none focus:border-emerald-500 transition-colors"/>
                     
                     <div class="relative">
                         <input 
                             type="tel" 
                             id="form-phone" 
+                            name="phone"
                             placeholder="(00) 12345-6789" 
                             required 
                             maxlength="15"
@@ -790,6 +796,12 @@
         let currentFilter = 'todos';
         let currentSearch = '';
         
+        // --- INICIALIZAÇÃO EMAILJS ---
+        (function() {
+            // SUBSTITUA "SUA_PUBLIC_KEY" PELA SUA CHAVE PÚBLICA DO EMAILJS
+            emailjs.init("yPtGfWJgxfETRB5LP"); 
+        })();
+
         // --- LÓGICA DO LIGHTBOX (VISUALIZADOR) ---
         let lightboxImages = [];
         let lightboxIndex = 0;
@@ -1185,18 +1197,52 @@
             }
         });
 
+        // --- HANDLER DE ENVIO COM EMAILJS ---
         document.getElementById('contact-form').addEventListener('submit', (e) => {
             e.preventDefault();
             
-            const rawPhone = document.getElementById('form-phone').value.replace(/\D/g, '');
-            if(rawPhone.length < 11) return;
-
-            window.open('https://w.app/primehouse', '_blank');
-            e.target.reset();
+            const btn = e.target.querySelector('button[type="submit"]');
+            const originalText = btn.textContent;
             
-            contactFormBtn.disabled = true;
-            contactFormBtn.classList.add('opacity-50', 'cursor-not-allowed');
-            checkIcon.classList.add('hidden');
+            // Feedback visual
+            btn.disabled = true;
+            btn.textContent = 'Enviando...';
+            btn.classList.add('opacity-75');
+
+            // Captura os dados
+            const templateParams = {
+                name: document.getElementById('form-name').value,
+                phone: document.getElementById('form-phone').value,
+                email: document.getElementById('form-email').value, // Novo campo
+                message: "Interesse em um imóvel do site." // Mensagem padrão ou campo extra
+            };
+
+            // Envia o email
+            // IMPORTANTE: Substitua 'SEU_SERVICE_ID' e 'SEU_TEMPLATE_ID' pelos seus dados do EmailJS
+            emailjs.send('service_danieldiaxf', 'template_danieldiaxf', templateParams)
+                .then(function(response) {
+                    showToast('Mensagem enviada com sucesso!', 'success');
+                    e.target.reset();
+                    
+                    // Reseta estado do botão e input de telefone
+                    contactFormBtn.disabled = true;
+                    contactFormBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                    checkIcon.classList.add('hidden');
+                }, function(error) {
+                    console.error('FAILED...', error);
+                    showToast('Erro ao enviar. Tente novamente.', 'error');
+                })
+                .finally(() => {
+                    btn.textContent = originalText;
+                    btn.classList.remove('opacity-75');
+                    
+                    // Se houve erro e os dados ainda estão lá, reabilita o botão
+                    const rawPhone = document.getElementById('form-phone').value.replace(/\D/g, '');
+                    if (rawPhone.length === 11 && btn.textContent === originalText) {
+                         btn.disabled = false;
+                         btn.classList.remove('opacity-50', 'cursor-not-allowed');
+                    }
+                });
         });
     </script>
 </body>
